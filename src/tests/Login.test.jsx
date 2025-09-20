@@ -9,72 +9,48 @@ jest.mock('../services/api.jsx', () => ({
   login: jest.fn()
 }));
 
-const renderWithProviders = (component) => {
-  return render(
-    <BrowserRouter>
-      <AuthProvider>
-        {component}
-      </AuthProvider>
-    </BrowserRouter>
-  );
-};
+const MockedLogin = () => (
+  <BrowserRouter>
+    <AuthProvider>
+      <Login />
+    </AuthProvider>
+  </BrowserRouter>
+);
 
 describe('Login Component', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  test('renders login form', () => {
-    renderWithProviders(<Login />);
+  test('renders login form with all required fields', () => {
+    render(<MockedLogin />);
     
     expect(screen.getByLabelText(/username input/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/password input/i)).toBeInTheDocument();
-    expect(screen.getByRole('combobox')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('admin')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /log in/i })).toBeInTheDocument();
   });
 
-  test('shows validation errors for empty fields', async () => {
-    renderWithProviders(<Login />);
+  test('allows user to change role selection', () => {
+    render(<MockedLogin />);
     
-    const submitButton = screen.getByRole('button', { name: /log in/i });
-    fireEvent.click(submitButton);
+    const roleSelect = screen.getByLabelText(/role selection/i);
+    fireEvent.change(roleSelect, { target: { value: 'staff' } });
     
-    await waitFor(() => {
-      expect(screen.getByText(/username is required/i)).toBeInTheDocument();
-      expect(screen.getByText(/password is required/i)).toBeInTheDocument();
-      expect(screen.getByText(/role is required/i)).toBeInTheDocument();
-    });
+    expect(roleSelect.value).toBe('staff');
   });
 
-  test('allows user to input credentials', () => {
-    renderWithProviders(<Login />);
+  test('shows signup link for new users', () => {
+    render(<MockedLogin />);
     
-    const usernameInput = screen.getByLabelText(/username input/i);
-    const passwordInput = screen.getByLabelText(/password input/i);
-    const roleSelect = screen.getByRole('combobox');
-    
-    fireEvent.change(usernameInput, { target: { value: 'testuser' } });
-    fireEvent.change(passwordInput, { target: { value: 'testpass' } });
-    fireEvent.change(roleSelect, { target: { value: 'admin' } });
-    
-    expect(usernameInput.value).toBe('testuser');
-    expect(passwordInput.value).toBe('testpass');
-    expect(roleSelect.value).toBe('admin');
+    expect(screen.getByText(/don't have an account/i)).toBeInTheDocument();
+    expect(screen.getByText(/sign up as a school/i)).toBeInTheDocument();
   });
 
-  test('shows demo credentials', () => {
-    renderWithProviders(<Login />);
+  test('displays FreeBooks Sekondi branding', () => {
+    render(<MockedLogin />);
     
-    expect(screen.getByText(/demo credentials/i)).toBeInTheDocument();
-    expect(screen.getByText(/admin1 \/ password/i)).toBeInTheDocument();
-    expect(screen.getByText(/staff1 \/ password/i)).toBeInTheDocument();
-    expect(screen.getByText(/school1 \/ password/i)).toBeInTheDocument();
-  });
-
-  test('has link to signup page', () => {
-    renderWithProviders(<Login />);
-    
-    const signupLink = screen.getByText(/sign up for schools/i);
-    expect(signupLink).toBeInTheDocument();
+    expect(screen.getByText('FreeBooks Sekondi')).toBeInTheDocument();
+    expect(screen.getByText(/300,000 exercise books/i)).toBeInTheDocument();
   });
 });

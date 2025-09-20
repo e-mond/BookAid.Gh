@@ -1,36 +1,32 @@
 import axios from 'axios';
-import {
-  schools,
-  students,
-  inventory,
-  reports,
-  users,
-  logs,
+import { 
+  schools, 
+  students, 
+  inventory, 
+  reports, 
+  users, 
+  logs, 
   deliveries,
-  delay,
-  getUserByCredentials,
-  getLogsByRole,
-  generateDefaultPassword,
-  validateSchoolSubmission
+  delay 
 } from '../mocks.jsx';
 
-// API configuration
-const API_BASE_URL = '/api';
+// Configuration
 const useMocks = true; // Set to false to use real API
+const baseURL = '/api';
 
 // Create axios instance
 const api = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL,
   timeout: 10000,
   headers: {
-    'Content-Type': 'application/json'
-  }
+    'Content-Type': 'application/json',
+  },
 });
 
 // Request interceptor to add auth token
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('authToken');
+    const token = localStorage.getItem('token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -51,254 +47,194 @@ api.interceptors.response.use(
 );
 
 // Mock API functions
-const mockApi = {
-  // Authentication
+const mockAPI = {
+  // Auth endpoints
   login: async (credentials) => {
-    await delay();
-    const user = getUserByCredentials(
-      credentials.username,
-      credentials.password,
-      credentials.role
+    await delay(2000);
+    const user = users.find(u => 
+      u.username === credentials.username && 
+      u.role === credentials.role
     );
-    
     if (user) {
-      localStorage.setItem('authToken', user.token);
+      const token = `mock-token-${user.id}`;
+      localStorage.setItem('token', token);
       localStorage.setItem('user', JSON.stringify(user));
-      return { data: user };
-    } else {
-      throw new Error('Invalid credentials');
+      return { data: { user, token } };
     }
+    throw new Error('Invalid credentials');
   },
 
   signup: async (userData) => {
-    await delay();
-    const defaultPassword = generateDefaultPassword();
+    await delay(2000);
     const newUser = {
-      id: `user_${Date.now()}`,
+      id: `user-${Date.now()}`,
       username: userData.username,
       email: userData.email,
       role: 'school',
-      schoolId: `school_${Date.now()}`,
-      schoolName: userData.schoolName,
-      defaultPassword
+      schoolId: userData.schoolName.toLowerCase().replace(/\s+/g, '-'),
+      defaultPassword: 'school123'
     };
-    
-    // Store in localStorage for demo
-    const existingUsers = JSON.parse(localStorage.getItem('mockUsers') || '[]');
-    existingUsers.push(newUser);
-    localStorage.setItem('mockUsers', JSON.stringify(existingUsers));
-    
-    return { data: { ...newUser, password: defaultPassword } };
+    users.push(newUser);
+    localStorage.setItem('users', JSON.stringify(users));
+    return { data: { user: newUser, message: 'School registered successfully' } };
   },
 
   changePassword: async (passwordData) => {
-    await delay();
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
-    if (user.id) {
-      // Mock password change
-      return { data: { success: true, message: 'Password changed successfully' } };
-    }
-    throw new Error('User not found');
+    await delay(2000);
+    return { data: { message: 'Password changed successfully' } };
   },
 
-  // Inventory
+  // Inventory endpoints
   getInventory: async () => {
-    await delay();
+    await delay(2000);
     return { data: inventory };
   },
 
   addYearlyBooks: async (yearlyData) => {
-    await delay();
-    const newRecord = {
-      year: yearlyData.year,
-      booksAdded: yearlyData.booksAdded,
-      budget: yearlyData.budget
-    };
-    
-    inventory.yearlyRecords.push(newRecord);
-    inventory.totalBooks += yearlyData.booksAdded;
-    inventory.remaining += yearlyData.booksAdded;
-    
-    return { data: newRecord };
+    await delay(2000);
+    inventory.yearlyRecords.push(yearlyData);
+    return { data: { message: 'Yearly books added successfully' } };
   },
 
-  // Schools
-  getSchools: async (status = null) => {
-    await delay();
-    let filteredSchools = schools;
-    if (status) {
-      filteredSchools = schools.filter(school => school.status === status);
-    }
-    return { data: filteredSchools };
+  // School endpoints
+  getSchools: async () => {
+    await delay(2000);
+    return { data: schools };
   },
 
-  submitSchool: async (submissionData) => {
-    await delay();
-    const validation = validateSchoolSubmission(submissionData);
-    if (!validation.isValid) {
-      throw new Error(validation.errors.join(', '));
-    }
-    
+  submitSchool: async (schoolData) => {
+    await delay(2000);
     const newSchool = {
-      id: `school_${Date.now()}`,
-      ...submissionData,
+      id: `school-${Date.now()}`,
+      ...schoolData,
       status: 'pending',
-      createdAt: new Date().toISOString(),
-      students: [],
-      deliveryProofs: []
+      createdAt: new Date().toISOString()
     };
-    
     schools.push(newSchool);
-    return { data: newSchool };
+    return { data: { message: 'School submission successful', school: newSchool } };
   },
 
   approveSchool: async (schoolId) => {
-    await delay();
+    await delay(2000);
     const school = schools.find(s => s.id === schoolId);
     if (school) {
       school.status = 'approved';
-      return { data: school };
     }
-    throw new Error('School not found');
+    return { data: { message: 'School approved successfully' } };
   },
 
-  deliverSchool: async (schoolId) => {
-    await delay();
-    const school = schools.find(s => s.id === schoolId);
-    if (school) {
-      school.status = 'delivered';
-      inventory.distributed += school.totalDeclared * 20;
-      inventory.remaining -= school.totalDeclared * 20;
-      return { data: school };
-    }
-    throw new Error('School not found');
+  // User management endpoints
+  getUsers: async () => {
+    await delay(2000);
+    return { data: users };
   },
 
-  // Students
+  createUser: async (userData) => {
+    await delay(2000);
+    const newUser = {
+      id: `user-${Date.now()}`,
+      ...userData
+    };
+    users.push(newUser);
+    return { data: { message: 'User created successfully', user: newUser } };
+  },
+
+  removeUser: async (userId) => {
+    await delay(2000);
+    const index = users.findIndex(u => u.id === userId);
+    if (index > -1) {
+      users.splice(index, 1);
+    }
+    return { data: { message: 'User removed successfully' } };
+  },
+
+  // Delivery endpoints
+  createDelivery: async (deliveryData) => {
+    await delay(2000);
+    const newDelivery = {
+      id: `del-${Date.now()}`,
+      ...deliveryData,
+      deliveredAt: new Date().toISOString()
+    };
+    deliveries.push(newDelivery);
+    // Deduct from inventory
+    inventory.distributed += deliveryData.booksDelivered;
+    return { data: { message: 'Delivery recorded successfully', delivery: newDelivery } };
+  },
+
+  // Student endpoints
   searchStudent: async (searchData) => {
-    await delay();
+    await delay(2000);
     const student = students.find(s => 
       s.name.toLowerCase().includes(searchData.name.toLowerCase()) &&
       s.dob === searchData.dob
     );
-    
+    return { data: { student, found: !!student } };
+  },
+
+  collectBooks: async (collectionData) => {
+    await delay(2000);
+    const student = students.find(s => s.id === collectionData.studentId);
     if (student) {
-      return { data: student };
-    }
-    throw new Error('Student not found');
-  },
-
-  collectStudent: async (studentId, collectionData) => {
-    await delay();
-    const student = students.find(s => s.id === studentId);
-    if (student && !student.issued) {
       student.issued = true;
-      student.issuedAt = new Date().toISOString();
-      student.claimantInfo = collectionData;
-      
-      const newReport = {
-        id: `ir_${Date.now()}`,
-        studentId: student.id,
-        schoolId: 'external',
-        books: 20,
-        issuedAt: student.issuedAt,
-        issuedBy: 'staff'
+      student.claimantInfo = {
+        voterId: collectionData.voterId,
+        proofUrls: collectionData.proofUrls || []
       };
-      
-      reports.push(newReport);
-      inventory.distributed += 20;
-      inventory.remaining -= 20;
-      
-      return { data: { student, report: newReport } };
     }
-    throw new Error('Student not found or already collected');
+    // Deduct from inventory
+    inventory.distributed += 20;
+    return { data: { message: 'Books collected successfully', receipt: `REC-${Date.now()}` } };
   },
 
-  // Deliveries
-  createDelivery: async (deliveryData) => {
-    await delay();
-    const newDelivery = {
-      id: `del_${Date.now()}`,
-      ...deliveryData,
-      deliveredAt: new Date().toISOString()
-    };
-    
-    deliveries.push(newDelivery);
-    inventory.distributed += deliveryData.booksDelivered;
-    inventory.remaining -= deliveryData.booksDelivered;
-    
-    return { data: newDelivery };
-  },
-
-  // Reports
+  // Reports endpoints
   getReports: async (filters = {}) => {
-    await delay();
-    let filteredReports = reports;
+    await delay(2000);
+    let filteredReports = [...reports];
     
-    if (filters.type === 'schools') {
-      filteredReports = reports.filter(r => r.schoolId !== 'external');
-    } else if (filters.type === 'external') {
-      filteredReports = reports.filter(r => r.schoolId === 'external');
+    if (filters.type) {
+      filteredReports = filteredReports.filter(r => {
+        if (filters.type === 'schools') return r.schoolId !== 'external';
+        if (filters.type === 'external') return r.schoolId === 'external';
+        return true;
+      });
     }
     
     return { data: filteredReports };
   },
 
-  // Users
-  getUsers: async () => {
-    await delay();
-    return { data: users };
-  },
-
-  createUser: async (userData) => {
-    await delay();
-    const newUser = {
-      id: `user_${Date.now()}`,
-      ...userData
-    };
-    
-    users.push(newUser);
-    return { data: newUser };
-  },
-
-  removeUser: async (userId) => {
-    await delay();
-    const userIndex = users.findIndex(u => u.id === userId);
-    if (userIndex !== -1) {
-      users.splice(userIndex, 1);
-      return { data: { success: true } };
-    }
-    throw new Error('User not found');
-  },
-
-  // Logs
+  // Logs endpoints
   getLogs: async (role = null) => {
-    await delay();
-    const filteredLogs = role ? getLogsByRole(role) : logs;
+    await delay(2000);
+    let filteredLogs = [...logs];
+    
+    if (role) {
+      filteredLogs = filteredLogs.filter(log => log.role === role);
+    }
+    
     return { data: filteredLogs };
   }
 };
 
 // Real API functions (placeholder)
-const realApi = {
+const realAPI = {
   login: (credentials) => api.post('/auth/login', credentials),
   signup: (userData) => api.post('/auth/signup', userData),
   changePassword: (passwordData) => api.post('/auth/change-password', passwordData),
   getInventory: () => api.get('/inventory'),
   addYearlyBooks: (yearlyData) => api.post('/inventory/add-yearly', yearlyData),
-  getSchools: (status) => api.get(`/schools${status ? `?status=${status}` : ''}`),
-  submitSchool: (submissionData) => api.post('/schools/submit', submissionData),
+  getSchools: () => api.get('/schools'),
+  submitSchool: (schoolData) => api.post('/schools/submit', schoolData),
   approveSchool: (schoolId) => api.post(`/schools/${schoolId}/approve`),
-  deliverSchool: (schoolId) => api.post(`/schools/${schoolId}/deliver`),
-  searchStudent: (searchData) => api.post('/students/search', searchData),
-  collectStudent: (studentId, collectionData) => api.post(`/students/${studentId}/collect`, collectionData),
-  createDelivery: (deliveryData) => api.post('/deliveries/create', deliveryData),
-  getReports: (filters) => api.get('/reports', { params: filters }),
   getUsers: () => api.get('/users'),
   createUser: (userData) => api.post('/users/create', userData),
   removeUser: (userId) => api.delete(`/users/remove/${userId}`),
+  createDelivery: (deliveryData) => api.post('/deliveries/create', deliveryData),
+  searchStudent: (searchData) => api.post('/students/search', searchData),
+  collectBooks: (collectionData) => api.post('/students/collect', collectionData),
+  getReports: (filters) => api.get('/reports', { params: filters }),
   getLogs: (role) => api.get('/logs', { params: { role } })
 };
 
 // Export the appropriate API based on configuration
-export default useMocks ? mockApi : realApi;
+export default useMocks ? mockAPI : realAPI;

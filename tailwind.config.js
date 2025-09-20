@@ -2,7 +2,6 @@
 module.exports = {
   content: [
     "./src/**/*.{js,jsx,ts,tsx}",
-    "./public/index.html"
   ],
   theme: {
     extend: {
@@ -11,11 +10,11 @@ module.exports = {
         success: '#28A745',
         error: '#DC3545',
         card: '#FFFFFF',
-        text: '#333333'
+        text: '#333333',
       },
       fontFamily: {
-        'roboto': ['Roboto', 'sans-serif']
-      }
+        'roboto': ['Roboto', 'sans-serif'],
+      },
     },
   },
   plugins: [],

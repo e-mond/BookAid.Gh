@@ -1,250 +1,179 @@
-// CSV parsing utility functions
+// CSV parsing utilities for student data import
 
-// Parse CSV string into array of objects
-export const parseCSV = (csvString, options = {}) => {
-  const {
-    delimiter = ',',
-    hasHeader = true,
-    skipEmptyLines = true,
-    trimFields = true
-  } = options;
-
-  try {
-    const lines = csvString.split('\n');
-    let data = [];
-    let headers = [];
-
-    // Remove empty lines if requested
-    const filteredLines = skipEmptyLines 
-      ? lines.filter(line => line.trim().length > 0)
-      : lines;
-
-    if (filteredLines.length === 0) {
-      return { data: [], headers: [], error: null };
-    }
-
-    // Parse headers if present
-    if (hasHeader) {
-      headers = parseCSVLine(filteredLines[0], delimiter, trimFields);
-      data = filteredLines.slice(1).map(line => {
-        const values = parseCSVLine(line, delimiter, trimFields);
-        const row = {};
-        headers.forEach((header, index) => {
-          row[header] = values[index] || '';
-        });
-        return row;
-      });
-    } else {
-      // No headers, use index-based keys
-      data = filteredLines.map(line => {
-        const values = parseCSVLine(line, delimiter, trimFields);
-        const row = {};
-        values.forEach((value, index) => {
-          row[`column_${index}`] = value;
-        });
-        return row;
-      });
-    }
-
-    return { data, headers, error: null };
-  } catch (error) {
-    return { 
-      data: [], 
-      headers: [], 
-      error: `CSV parsing error: ${error.message}` 
-    };
+export const parseCSV = (csvText) => {
+  const lines = csvText.split('\n').filter(line => line.trim() !== '');
+  
+  if (lines.length < 2) {
+    throw new Error('CSV must have at least a header row and one data row');
   }
+  
+  const headers = lines[0].split(',').map(header => header.trim().toLowerCase());
+  const data = [];
+  
+  for (let i = 1; i < lines.length; i++) {
+    const values = parseCSVLine(lines[i]);
+    
+    if (values.length !== headers.length) {
+      throw new Error(`Row ${i + 1} has ${values.length} columns, expected ${headers.length}`);
+    }
+    
+    const row = {};
+    headers.forEach((header, index) => {
+      row[header] = values[index].trim();
+    });
+    
+    data.push(row);
+  }
+  
+  return data;
 };
 
-// Parse a single CSV line, handling quoted fields
-const parseCSVLine = (line, delimiter, trimFields) => {
-  const result = [];
+// Parse a single CSV line, handling quoted values
+const parseCSVLine = (line) => {
+  const values = [];
   let current = '';
   let inQuotes = false;
-  let i = 0;
-
-  while (i < line.length) {
+  
+  for (let i = 0; i < line.length; i++) {
     const char = line[i];
-    const nextChar = line[i + 1];
-
+    
     if (char === '"') {
-      if (inQuotes && nextChar === '"') {
+      if (inQuotes && line[i + 1] === '"') {
         // Escaped quote
         current += '"';
-        i += 2;
-        continue;
+        i++; // Skip next quote
       } else {
         // Toggle quote state
         inQuotes = !inQuotes;
       }
-    } else if (char === delimiter && !inQuotes) {
-      // Field separator
-      result.push(trimFields ? current.trim() : current);
+    } else if (char === ',' && !inQuotes) {
+      // End of field
+      values.push(current);
       current = '';
     } else {
       current += char;
     }
-    i++;
   }
-
+  
   // Add the last field
-  result.push(trimFields ? current.trim() : current);
-
-  return result;
+  values.push(current);
+  
+  return values;
 };
 
-// Validate CSV data for student records
-export const validateStudentCSV = (csvData) => {
-  const errors = [];
-  const warnings = [];
-  const validStudents = [];
-
-  // Expected headers for student CSV
-  const expectedHeaders = ['name', 'dob', 'className'];
-  const requiredHeaders = ['name', 'dob'];
-
-  // Check headers
-  const headers = Object.keys(csvData[0] || {});
-  const missingHeaders = requiredHeaders.filter(header => !headers.includes(header));
+// Validate CSV headers for student data
+export const validateCSVHeaders = (headers) => {
+  const requiredHeaders = ['name', 'dob', 'class'];
+  const normalizedHeaders = headers.map(h => h.trim().toLowerCase());
+  
+  const missingHeaders = requiredHeaders.filter(required => 
+    !normalizedHeaders.includes(required)
+  );
   
   if (missingHeaders.length > 0) {
-    errors.push(`Missing required headers: ${missingHeaders.join(', ')}`);
-    return { validStudents, errors, warnings };
+    throw new Error(`Missing required headers: ${missingHeaders.join(', ')}`);
   }
-
-  // Validate each row
-  csvData.forEach((row, index) => {
-    const rowErrors = [];
-    const student = {};
-
-    // Validate name
-    if (!row.name || row.name.trim().length < 2) {
-      rowErrors.push('Name must be at least 2 characters');
-    } else {
-      student.name = row.name.trim();
-    }
-
-    // Validate date of birth
-    if (!row.dob) {
-      rowErrors.push('Date of birth is required');
-    } else {
-      const dob = new Date(row.dob);
-      if (isNaN(dob.getTime())) {
-        rowErrors.push('Invalid date format for date of birth');
-      } else {
-        student.dob = row.dob;
-      }
-    }
-
-    // Validate class name
-    if (!row.className || row.className.trim().length < 1) {
-      rowErrors.push('Class name is required');
-    } else {
-      student.className = row.className.trim();
-    }
-
-    // Check for age warnings
-    if (student.dob) {
-      const dob = new Date(student.dob);
-      const today = new Date();
-      const age = today.getFullYear() - dob.getFullYear();
-      
-      if (age < 5 || age > 18) {
-        warnings.push(`Row ${index + 1}: Age (${age}) seems outside typical school range`);
-      }
-    }
-
-    if (rowErrors.length === 0) {
-      validStudents.push(student);
-    } else {
-      errors.push(`Row ${index + 1}: ${rowErrors.join(', ')}`);
-    }
-  });
-
-  return { validStudents, errors, warnings };
-};
-
-// Convert array of objects to CSV string
-export const arrayToCSV = (data, options = {}) => {
-  const {
-    delimiter = ',',
-    includeHeader = true,
-    headers = null
-  } = options;
-
-  if (!data || data.length === 0) {
-    return '';
-  }
-
-  const csvHeaders = headers || Object.keys(data[0]);
-  let csvString = '';
-
-  // Add headers
-  if (includeHeader) {
-    csvString += csvHeaders.map(header => `"${header}"`).join(delimiter) + '\n';
-  }
-
-  // Add data rows
-  data.forEach(row => {
-    const values = csvHeaders.map(header => {
-      const value = row[header] || '';
-      // Escape quotes and wrap in quotes if contains delimiter or quotes
-      const escapedValue = value.toString().replace(/"/g, '""');
-      return `"${escapedValue}"`;
-    });
-    csvString += values.join(delimiter) + '\n';
-  });
-
-  return csvString;
-};
-
-// Download CSV file
-export const downloadCSV = (data, filename = 'data.csv', options = {}) => {
-  const csvString = arrayToCSV(data, options);
-  const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
-  const link = document.createElement('a');
   
-  if (link.download !== undefined) {
-    const url = URL.createObjectURL(blob);
-    link.setAttribute('href', url);
-    link.setAttribute('download', filename);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  }
+  return true;
 };
 
-// Parse CSV file from File object
-export const parseCSVFile = (file) => {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    
-    reader.onload = (event) => {
-      try {
-        const csvString = event.target.result;
-        const result = parseCSV(csvString);
-        resolve(result);
-      } catch (error) {
-        reject(error);
-      }
+// Convert CSV data to student objects
+export const csvToStudents = (csvData) => {
+  return csvData.map((row, index) => {
+    const student = {
+      name: row.name || row.Name || '',
+      dob: row.dob || row.DOB || row.date_of_birth || '',
+      className: row.class || row.Class || row.class_name || ''
     };
     
-    reader.onerror = () => {
-      reject(new Error('Failed to read file'));
-    };
+    // Validate required fields
+    if (!student.name) {
+      throw new Error(`Row ${index + 2}: Student name is required`);
+    }
     
-    reader.readAsText(file);
+    if (!student.dob) {
+      throw new Error(`Row ${index + 2}: Date of birth is required`);
+    }
+    
+    if (!student.className) {
+      throw new Error(`Row ${index + 2}: Class is required`);
+    }
+    
+    return student;
   });
 };
 
-// Sample CSV template for students
-export const getStudentCSVTemplate = () => {
-  const template = [
-    { name: 'John Doe', dob: '2010-01-15', className: 'Class 5' },
-    { name: 'Jane Smith', dob: '2010-03-22', className: 'Class 5' },
-    { name: 'Mike Johnson', dob: '2009-11-08', className: 'Class 6' }
+// Generate CSV template
+export const generateCSVTemplate = () => {
+  const headers = ['Name', 'DOB (YYYY-MM-DD)', 'Class'];
+  const sampleData = [
+    ['John Doe', '2010-01-15', 'Class 5'],
+    ['Jane Smith', '2010-03-22', 'Class 6']
   ];
   
-  return arrayToCSV(template);
+  const csvContent = [
+    headers.join(','),
+    ...sampleData.map(row => row.join(','))
+  ].join('\n');
+  
+  return csvContent;
+};
+
+// Download CSV template
+export const downloadCSVTemplate = () => {
+  const csvContent = generateCSVTemplate();
+  const blob = new Blob([csvContent], { type: 'text/csv' });
+  const url = window.URL.createObjectURL(blob);
+  
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = 'student_template.csv';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  
+  window.URL.revokeObjectURL(url);
+};
+
+// Export data to CSV
+export const exportToCSV = (data, filename = 'export.csv') => {
+  if (!data || data.length === 0) {
+    throw new Error('No data to export');
+  }
+  
+  const headers = Object.keys(data[0]);
+  const csvContent = [
+    headers.join(','),
+    ...data.map(row => 
+      headers.map(header => {
+        const value = row[header];
+        // Escape quotes and wrap in quotes if contains comma
+        if (typeof value === 'string' && (value.includes(',') || value.includes('"'))) {
+          return `"${value.replace(/"/g, '""')}"`;
+        }
+        return value;
+      }).join(',')
+    )
+  ].join('\n');
+  
+  const blob = new Blob([csvContent], { type: 'text/csv' });
+  const url = window.URL.createObjectURL(blob);
+  
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  
+  window.URL.revokeObjectURL(url);
+};
+
+export default {
+  parseCSV,
+  validateCSVHeaders,
+  csvToStudents,
+  generateCSVTemplate,
+  downloadCSVTemplate,
+  exportToCSV
 };

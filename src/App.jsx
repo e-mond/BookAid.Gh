@@ -1,8 +1,9 @@
-import React, { Suspense } from 'react';
+import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext.jsx';
 import { InventoryProvider } from './contexts/InventoryContext.jsx';
-import Navbar from './components/Navbar.jsx';
+
+// Components
 import Login from './components/Login.jsx';
 import Signup from './components/Signup.jsx';
 import Dashboard from './components/Dashboard.jsx';
@@ -14,185 +15,162 @@ import DeliveryEntry from './components/DeliveryEntry.jsx';
 import ParentCollection from './components/ParentCollection.jsx';
 import Reports from './components/Reports.jsx';
 import Details from './components/Details.jsx';
-import { ToastContainer } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
 
-// Lazy load heavy components for better performance
-const LazyReports = React.lazy(() => import('./components/Reports.jsx'));
-const LazyAdminApproval = React.lazy(() => import('./components/AdminApproval.jsx'));
-const LazyUserManagement = React.lazy(() => import('./components/UserManagement.jsx'));
-const LazyBookRecords = React.lazy(() => import('./components/BookRecords.jsx'));
-
-// Loading component
-const LoadingSpinner = () => (
-  <div className="min-h-screen flex items-center justify-center">
-    <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
-  </div>
-);
-
-// Protected Route component
-const ProtectedRoute = ({ children, requiredRoles = [] }) => {
-  const { isAuthenticated, hasAnyRole } = useAuth();
-
-  if (!isAuthenticated()) {
+// Protected Route Component
+const ProtectedRoute = ({ children, allowedRoles = [] }) => {
+  const { isAuthenticated, user } = useAuth();
+  
+  if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
-
-  if (requiredRoles.length > 0 && !hasAnyRole(requiredRoles)) {
+  
+  if (allowedRoles.length > 0 && !allowedRoles.includes(user?.role)) {
     return <Navigate to="/" replace />;
   }
-
+  
   return children;
 };
 
-// Public Route component (redirects to dashboard if already authenticated)
-const PublicRoute = ({ children }) => {
-  const { isAuthenticated } = useAuth();
-
-  if (isAuthenticated()) {
-    return <Navigate to="/" replace />;
-  }
-
-  return children;
-};
-
-// Main App Layout
-const AppLayout = ({ children }) => {
-  const { isAuthenticated } = useAuth();
-
+// Role-based background wrapper
+const RoleBasedWrapper = ({ children }) => {
+  const { user } = useAuth();
+  
+  const getBackgroundClass = () => {
+    if (user?.role === 'staff') return 'bg-blue-50';
+    if (user?.role === 'school') return 'bg-green-50';
+    return 'bg-gray-50';
+  };
+  
   return (
-    <div className="min-h-screen bg-gray-50">
-      {isAuthenticated() && <Navbar />}
-      <main className={isAuthenticated() ? 'pt-16' : ''}>
-        {children}
-      </main>
+    <div className={getBackgroundClass()}>
+      {children}
     </div>
   );
 };
 
-// App Routes
+// Main App Routes
 const AppRoutes = () => {
+  const { isAuthenticated } = useAuth();
+  
   return (
     <Routes>
       {/* Public Routes */}
-      <Route
-        path="/login"
-        element={
-          <PublicRoute>
-            <Login />
-          </PublicRoute>
-        }
+      <Route 
+        path="/login" 
+        element={isAuthenticated ? <Navigate to="/" replace /> : <Login />} 
       />
-      <Route
-        path="/signup"
-        element={
-          <PublicRoute>
-            <Signup />
-          </PublicRoute>
-        }
+      <Route 
+        path="/signup" 
+        element={isAuthenticated ? <Navigate to="/" replace /> : <Signup />} 
       />
-
+      
       {/* Protected Routes */}
-      <Route
-        path="/"
+      <Route 
+        path="/" 
         element={
           <ProtectedRoute>
-            <Dashboard />
+            <RoleBasedWrapper>
+              <Dashboard />
+            </RoleBasedWrapper>
           </ProtectedRoute>
-        }
+        } 
       />
-
+      
       {/* Admin Routes */}
-      <Route
-        path="/admin/users"
+      <Route 
+        path="/admin/users" 
         element={
-          <ProtectedRoute requiredRoles={['admin']}>
-            <Suspense fallback={<LoadingSpinner />}>
-              <LazyUserManagement />
-            </Suspense>
+          <ProtectedRoute allowedRoles={['admin']}>
+            <UserManagement />
           </ProtectedRoute>
-        }
+        } 
       />
-      <Route
-        path="/admin/books"
+      <Route 
+        path="/admin/books" 
         element={
-          <ProtectedRoute requiredRoles={['admin']}>
-            <Suspense fallback={<LoadingSpinner />}>
-              <LazyBookRecords />
-            </Suspense>
+          <ProtectedRoute allowedRoles={['admin']}>
+            <BookRecords />
           </ProtectedRoute>
-        }
+        } 
       />
-      <Route
-        path="/admin/approvals"
+      <Route 
+        path="/admin/approval" 
         element={
-          <ProtectedRoute requiredRoles={['admin']}>
-            <Suspense fallback={<LoadingSpinner />}>
-              <LazyAdminApproval />
-            </Suspense>
+          <ProtectedRoute allowedRoles={['admin']}>
+            <AdminApproval />
           </ProtectedRoute>
-        }
+        } 
       />
-
-      {/* Staff Routes */}
-      <Route
-        path="/staff/delivery"
+      <Route 
+        path="/admin/add-school" 
         element={
-          <ProtectedRoute requiredRoles={['staff']}>
-            <DeliveryEntry />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/staff/collection"
-        element={
-          <ProtectedRoute requiredRoles={['staff']}>
-            <ParentCollection />
-          </ProtectedRoute>
-        }
-      />
-
-      {/* School Routes */}
-      <Route
-        path="/school/submit"
-        element={
-          <ProtectedRoute requiredRoles={['school']}>
-            <SchoolSubmission />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/school/submissions"
-        element={
-          <ProtectedRoute requiredRoles={['school']}>
-            <div className="p-8">
-              <h1 className="text-2xl font-bold text-gray-900 mb-4">My Submissions</h1>
-              <p className="text-gray-600">Your submission history will be displayed here.</p>
+          <ProtectedRoute allowedRoles={['admin']}>
+            <div className="min-h-screen bg-gray-50">
+              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                <div className="text-center">
+                  <h1 className="text-2xl font-bold text-gray-900">Add School</h1>
+                  <p className="text-gray-600 mt-2">This feature is under development.</p>
+                </div>
+              </div>
             </div>
           </ProtectedRoute>
-        }
+        } 
       />
-
-      {/* Shared Routes */}
-      <Route
-        path="/reports"
+      <Route 
+        path="/admin/parental-collect" 
         element={
-          <ProtectedRoute requiredRoles={['admin', 'staff']}>
-            <Suspense fallback={<LoadingSpinner />}>
-              <LazyReports />
-            </Suspense>
+          <ProtectedRoute allowedRoles={['admin']}>
+            <ParentCollection />
           </ProtectedRoute>
-        }
+        } 
       />
-      <Route
-        path="/details/:type"
+      
+      {/* Staff Routes */}
+      <Route 
+        path="/staff/delivery" 
+        element={
+          <ProtectedRoute allowedRoles={['staff']}>
+            <DeliveryEntry />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/staff/parental-collect" 
+        element={
+          <ProtectedRoute allowedRoles={['staff']}>
+            <ParentCollection />
+          </ProtectedRoute>
+        } 
+      />
+      
+      {/* School Routes */}
+      <Route 
+        path="/school/submission" 
+        element={
+          <ProtectedRoute allowedRoles={['school']}>
+            <SchoolSubmission />
+          </ProtectedRoute>
+        } 
+      />
+      
+      {/* Shared Routes */}
+      <Route 
+        path="/reports" 
+        element={
+          <ProtectedRoute>
+            <Reports />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/details/:type" 
         element={
           <ProtectedRoute>
             <Details />
           </ProtectedRoute>
-        }
+        } 
       />
-
+      
       {/* Catch all route */}
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
@@ -205,17 +183,9 @@ const App = () => {
     <AuthProvider>
       <InventoryProvider>
         <Router>
-          <AppLayout>
+          <div className="App">
             <AppRoutes />
-          </AppLayout>
-          <ToastContainer
-            position="top-right"
-            autoClose={3000}
-            hideProgressBar
-            closeOnClick
-            pauseOnHover
-            draggable
-          />
+          </div>
         </Router>
       </InventoryProvider>
     </AuthProvider>

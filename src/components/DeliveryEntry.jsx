@@ -1,45 +1,53 @@
 import React, { useState, useEffect } from 'react';
-import DatePicker from 'react-datepicker';
-import 'react-datepicker/dist/react-datepicker.css';
+import { useAuth } from '../contexts/AuthContext.jsx';
 import { useInventory } from '../contexts/InventoryContext.jsx';
 import api from '../services/api.jsx';
+import Navbar from './Navbar.jsx';
 import Button from './common/Button.jsx';
 import Input from './common/Input.jsx';
+import Modal from './common/Modal.jsx';
 import Toast from './common/Toast.jsx';
 import { FormSkeleton } from './common/SkeletonWrapper.jsx';
+import DatePicker from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
 
 const DeliveryEntry = () => {
+  const { isStaff } = useAuth();
+  const { deductBooks } = useInventory();
+  const [schools, setSchools] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     schoolId: '',
     schoolName: '',
     booksDelivered: '',
-    deliveryDate: new Date(),
-    notes: ''
+    deliveryTime: new Date()
   });
-  const [schools, setSchools] = useState([]);
-  const [errors, setErrors] = useState({});
-  const [loading, setLoading] = useState(false);
-  const [showToast, setShowToast] = useState(false);
-  const [toastMessage, setToastMessage] = useState('');
-  const [toastType, setToastType] = useState('success');
-
-  const { updateDistribution } = useInventory();
+  const [formErrors, setFormErrors] = useState({});
+  const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
 
   useEffect(() => {
-    loadSchools();
-  }, []);
+    if (isStaff) {
+      loadSchools();
+    }
+  }, [isStaff]);
 
   const loadSchools = async () => {
+    setLoading(true);
     try {
-      setLoading(true);
-      const response = await api.getSchools('approved');
+      const response = await api.getSchools();
       setSchools(response.data);
     } catch (error) {
-      console.error('Error loading schools:', error);
-      showToastMessage('Failed to load schools', 'error');
+      console.error('Failed to load schools:', error);
+      showToast('Failed to load schools', 'error');
     } finally {
       setLoading(false);
     }
+  };
+
+  const showToast = (message, type = 'success') => {
+    setToast({ show: true, message, type });
+    setTimeout(() => setToast({ show: false, message: '', type: 'success' }), 3000);
   };
 
   const handleInputChange = (e) => {
@@ -49,19 +57,13 @@ const DeliveryEntry = () => {
       [name]: value
     }));
     
-    if (errors[name]) {
-      setErrors(prev => ({
+    // Clear error when user starts typing
+    if (formErrors[name]) {
+      setFormErrors(prev => ({
         ...prev,
         [name]: ''
       }));
     }
-  };
-
-  const handleDateChange = (date) => {
-    setFormData(prev => ({
-      ...prev,
-      deliveryDate: date
-    }));
   };
 
   const handleSchoolSelect = (e) => {
@@ -70,32 +72,35 @@ const DeliveryEntry = () => {
     
     setFormData(prev => ({
       ...prev,
-      schoolId: schoolId,
+      schoolId,
       schoolName: selectedSchool ? selectedSchool.name : ''
     }));
   };
 
+  const handleDateChange = (date) => {
+    setFormData(prev => ({
+      ...prev,
+      deliveryTime: date
+    }));
+  };
+
   const validateForm = () => {
-    const newErrors = {};
-
+    const errors = {};
+    
     if (!formData.schoolId) {
-      newErrors.schoolId = 'Please select a school';
+      errors.schoolId = 'Please select a school';
     }
-
+    
     if (!formData.booksDelivered || formData.booksDelivered <= 0) {
-      newErrors.booksDelivered = 'Books delivered must be a positive number';
-    } else if (formData.booksDelivered > 10000) {
-      newErrors.booksDelivered = 'Books delivered seems unusually high';
+      errors.booksDelivered = 'Books delivered must be greater than 0';
     }
-
-    if (!formData.deliveryDate) {
-      newErrors.deliveryDate = 'Delivery date is required';
-    } else if (formData.deliveryDate > new Date()) {
-      newErrors.deliveryDate = 'Delivery date cannot be in the future';
+    
+    if (!formData.deliveryTime) {
+      errors.deliveryTime = 'Delivery time is required';
     }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
   };
 
   const handleSubmit = async (e) => {
@@ -104,197 +109,140 @@ const DeliveryEntry = () => {
     if (!validateForm()) {
       return;
     }
-
+    
+    setSubmitting(true);
     try {
-      setLoading(true);
       const deliveryData = {
         schoolId: formData.schoolId,
         schoolName: formData.schoolName,
         booksDelivered: parseInt(formData.booksDelivered),
-        deliveredAt: formData.deliveryDate.toISOString(),
-        notes: formData.notes.trim() || null
+        deliveredAt: formData.deliveryTime.toISOString()
       };
-
-      const response = await api.createDelivery(deliveryData);
       
-      // Update inventory context
-      updateDistribution(parseInt(formData.booksDelivered));
+      await api.createDelivery(deliveryData);
+      deductBooks(parseInt(formData.booksDelivered));
       
-      resetForm();
-      showToastMessage('Delivery recorded successfully', 'success');
+      showToast('Delivery recorded successfully');
+      
+      // Reset form
+      setFormData({
+        schoolId: '',
+        schoolName: '',
+        booksDelivered: '',
+        deliveryTime: new Date()
+      });
     } catch (error) {
-      console.error('Error recording delivery:', error);
-      showToastMessage(error.message || 'Failed to record delivery', 'error');
+      console.error('Failed to record delivery:', error);
+      showToast('Failed to record delivery', 'error');
     } finally {
-      setLoading(false);
+      setSubmitting(false);
     }
   };
 
-  const resetForm = () => {
-    setFormData({
-      schoolId: '',
-      schoolName: '',
-      booksDelivered: '',
-      deliveryDate: new Date(),
-      notes: ''
-    });
-    setErrors({});
-  };
-
-  const showToastMessage = (message, type) => {
-    setToastMessage(message);
-    setToastType(type);
-    setShowToast(true);
-  };
-
-  const handleToastClose = () => {
-    setShowToast(false);
-  };
-
-  if (loading && schools.length === 0) {
+  if (!isStaff) {
     return (
-      <div className="space-y-6">
-        <h1 className="text-2xl font-bold text-gray-900">Delivery Entry</h1>
-        <FormSkeleton fields={5} />
+      <div className="min-h-screen bg-blue-50">
+        <Navbar />
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="text-center">
+            <h1 className="text-2xl font-bold text-gray-900">Access Denied</h1>
+            <p className="text-gray-600 mt-2">You don't have permission to access this page.</p>
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-gray-900">Record Delivery</h1>
-      </div>
-
-      <div className="bg-white shadow rounded-lg">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h2 className="text-lg font-medium text-gray-900">Delivery Information</h2>
+    <div className="min-h-screen bg-blue-50">
+      <Navbar />
+      
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900">Delivery Entry</h1>
+          <p className="text-gray-600 mt-2">Record book deliveries to schools</p>
         </div>
-        <div className="p-6">
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div>
-              <label htmlFor="schoolId" className="block text-sm font-medium text-gray-700 mb-1">
-                School <span className="text-error">*</span>
-              </label>
-              <select
-                id="schoolId"
-                name="schoolId"
-                value={formData.schoolId}
-                onChange={handleSchoolSelect}
-                className={`block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-success focus:border-success transition-colors duration-200 ${
-                  errors.schoolId ? 'border-error' : 'border-gray-300'
-                }`}
-                aria-invalid={errors.schoolId ? 'true' : 'false'}
-                aria-describedby={errors.schoolId ? 'schoolId-error' : undefined}
-              >
-                <option value="">Select a school</option>
-                {schools.map(school => (
-                  <option key={school.id} value={school.id}>
-                    {school.name} ({school.totalDeclared} students)
-                  </option>
-                ))}
-              </select>
-              {errors.schoolId && (
-                <p id="schoolId-error" className="mt-1 text-sm text-error" role="alert">
-                  {errors.schoolId}
-                </p>
-              )}
-            </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label htmlFor="booksDelivered" className="block text-sm font-medium text-gray-700 mb-1">
-                  Books Delivered <span className="text-error">*</span>
-                </label>
-                <input
-                  id="booksDelivered"
+        <div className="bg-white rounded-lg shadow-md">
+          <div className="p-6">
+            {loading ? (
+              <FormSkeleton fields={4} />
+            ) : (
+              <form onSubmit={handleSubmit} className="space-y-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    School
+                  </label>
+                  <select
+                    name="schoolId"
+                    value={formData.schoolId}
+                    onChange={handleSchoolSelect}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-success focus:border-success"
+                  >
+                    <option value="">Select a school</option>
+                    {schools.map(school => (
+                      <option key={school.id} value={school.id}>
+                        {school.name}
+                      </option>
+                    ))}
+                  </select>
+                  {formErrors.schoolId && (
+                    <p className="mt-1 text-sm text-error">{formErrors.schoolId}</p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Delivery Time
+                  </label>
+                  <DatePicker
+                    selected={formData.deliveryTime}
+                    onChange={handleDateChange}
+                    showTimeSelect
+                    timeFormat="HH:mm"
+                    timeIntervals={15}
+                    dateFormat="MMMM d, yyyy h:mm aa"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-success focus:border-success"
+                    placeholderText="Select delivery time"
+                  />
+                  {formErrors.deliveryTime && (
+                    <p className="mt-1 text-sm text-error">{formErrors.deliveryTime}</p>
+                  )}
+                </div>
+
+                <Input
+                  label="Books Delivered"
                   name="booksDelivered"
                   type="number"
                   value={formData.booksDelivered}
                   onChange={handleInputChange}
-                  className={`block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-success focus:border-success transition-colors duration-200 ${
-                    errors.booksDelivered ? 'border-error' : 'border-gray-300'
-                  }`}
-                  placeholder="Enter number of books"
+                  error={formErrors.booksDelivered}
+                  placeholder="Enter number of books delivered"
                   min="1"
-                  aria-invalid={errors.booksDelivered ? 'true' : 'false'}
-                  aria-describedby={errors.booksDelivered ? 'booksDelivered-error' : undefined}
+                  required
                 />
-                {errors.booksDelivered && (
-                  <p id="booksDelivered-error" className="mt-1 text-sm text-error" role="alert">
-                    {errors.booksDelivered}
-                  </p>
-                )}
-              </div>
 
-              <div>
-                <label htmlFor="deliveryDate" className="block text-sm font-medium text-gray-700 mb-1">
-                  Delivery Date <span className="text-error">*</span>
-                </label>
-                <DatePicker
-                  selected={formData.deliveryDate}
-                  onChange={handleDateChange}
-                  dateFormat="dd/MM/yyyy"
-                  maxDate={new Date()}
-                  className={`block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-success focus:border-success transition-colors duration-200 ${
-                    errors.deliveryDate ? 'border-error' : 'border-gray-300'
-                  }`}
-                  placeholderText="Select delivery date"
-                  aria-invalid={errors.deliveryDate ? 'true' : 'false'}
-                  aria-describedby={errors.deliveryDate ? 'deliveryDate-error' : undefined}
-                />
-                {errors.deliveryDate && (
-                  <p id="deliveryDate-error" className="mt-1 text-sm text-error" role="alert">
-                    {errors.deliveryDate}
-                  </p>
-                )}
-              </div>
-            </div>
-
-            <div>
-              <label htmlFor="notes" className="block text-sm font-medium text-gray-700 mb-1">
-                Notes (Optional)
-              </label>
-              <textarea
-                id="notes"
-                name="notes"
-                value={formData.notes}
-                onChange={handleInputChange}
-                rows={3}
-                className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-success focus:border-success transition-colors duration-200"
-                placeholder="Enter any additional notes about the delivery"
-              />
-            </div>
-
-            <div className="flex justify-end space-x-3">
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={resetForm}
-                disabled={loading}
-              >
-                Reset
-              </Button>
-              <Button
-                type="submit"
-                variant="primary"
-                loading={loading}
-                disabled={loading}
-              >
-                Record Delivery
-              </Button>
-            </div>
-          </form>
+                <div className="flex justify-end">
+                  <Button
+                    type="submit"
+                    variant="primary"
+                    loading={submitting}
+                    className="px-8"
+                  >
+                    Record Delivery
+                  </Button>
+                </div>
+              </form>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* Toast Notification */}
-      {showToast && (
+      {toast.show && (
         <Toast
-          message={toastMessage}
-          type={toastType}
-          onClose={handleToastClose}
-          duration={3000}
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast({ show: false, message: '', type: 'success' })}
         />
       )}
     </div>

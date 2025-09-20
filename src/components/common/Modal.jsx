@@ -2,15 +2,14 @@ import React, { useEffect, useRef } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 
-const Modal = ({
-  isOpen,
-  onClose,
-  title,
-  children,
+const Modal = ({ 
+  isOpen, 
+  onClose, 
+  title, 
+  children, 
   size = 'md',
   showCloseButton = true,
-  closeOnOverlayClick = true,
-  className = ''
+  closeOnOverlayClick = true 
 }) => {
   const initialFocusRef = useRef(null);
 
@@ -20,7 +19,7 @@ const Modal = ({
     }
   }, [isOpen]);
 
-  const sizeClasses = {
+  const sizes = {
     sm: 'max-w-md',
     md: 'max-w-lg',
     lg: 'max-w-2xl',
@@ -59,17 +58,11 @@ const Modal = ({
               leaveFrom="opacity-100 scale-100"
               leaveTo="opacity-0 scale-95"
             >
-              <Dialog.Panel
-                className={`w-full ${sizeClasses[size]} transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all ${className}`}
-                role="dialog"
-                aria-modal="true"
-                aria-labelledby={title ? 'modal-title' : undefined}
-              >
+              <Dialog.Panel className={`w-full ${sizes[size]} transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all`}>
                 {title && (
                   <Dialog.Title
                     as="h3"
                     className="text-lg font-medium leading-6 text-gray-900 mb-4"
-                    id="modal-title"
                   >
                     {title}
                   </Dialog.Title>
@@ -79,14 +72,14 @@ const Modal = ({
                   <button
                     ref={initialFocusRef}
                     type="button"
-                    className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 rounded-md p-1"
+                    className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-primary"
                     onClick={onClose}
                     aria-label="Close modal"
                   >
                     <XMarkIcon className="h-6 w-6" />
                   </button>
                 )}
-
+                
                 <div className="mt-2">
                   {children}
                 </div>

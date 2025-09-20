@@ -1,5 +1,4 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import api from '../services/api.jsx';
 
 const AuthContext = createContext();
 
@@ -18,105 +17,59 @@ export const AuthProvider = ({ children }) => {
 
   // Initialize auth state from localStorage
   useEffect(() => {
-    const initializeAuth = () => {
-      try {
-        const storedToken = localStorage.getItem('authToken');
-        const storedUser = localStorage.getItem('user');
-        
-        if (storedToken && storedUser) {
-          setToken(storedToken);
-          setUser(JSON.parse(storedUser));
-        }
-      } catch (error) {
-        console.error('Error initializing auth:', error);
-        // Clear invalid data
-        localStorage.removeItem('authToken');
-        localStorage.removeItem('user');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    initializeAuth();
+    const storedToken = localStorage.getItem('token');
+    const storedUser = localStorage.getItem('user');
+    
+    if (storedToken && storedUser) {
+      setToken(storedToken);
+      setUser(JSON.parse(storedUser));
+    }
+    setLoading(false);
   }, []);
 
   const login = async (credentials) => {
     try {
-      setLoading(true);
       const response = await api.login(credentials);
-      const userData = response.data;
+      const { user: userData, token: userToken } = response.data;
       
       setUser(userData);
-      setToken(userData.token);
+      setToken(userToken);
       
-      // Store in localStorage
-      localStorage.setItem('authToken', userData.token);
+      localStorage.setItem('token', userToken);
       localStorage.setItem('user', JSON.stringify(userData));
       
       return { success: true, user: userData };
     } catch (error) {
       console.error('Login error:', error);
-      return { 
-        success: false, 
-        error: error.message || 'Login failed' 
-      };
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const signup = async (userData) => {
-    try {
-      setLoading(true);
-      const response = await api.signup(userData);
-      const newUser = response.data;
-      
-      return { success: true, user: newUser };
-    } catch (error) {
-      console.error('Signup error:', error);
-      return { 
-        success: false, 
-        error: error.message || 'Signup failed' 
-      };
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const changePassword = async (passwordData) => {
-    try {
-      setLoading(true);
-      const response = await api.changePassword(passwordData);
-      
-      return { success: true, message: response.data.message };
-    } catch (error) {
-      console.error('Change password error:', error);
-      return { 
-        success: false, 
-        error: error.message || 'Password change failed' 
-      };
-    } finally {
-      setLoading(false);
+      return { success: false, error: error.message };
     }
   };
 
   const logout = () => {
     setUser(null);
     setToken(null);
-    localStorage.removeItem('authToken');
+    localStorage.removeItem('token');
     localStorage.removeItem('user');
   };
 
-  const isAuthenticated = () => {
-    return !!user && !!token;
+  const changePassword = async (passwordData) => {
+    try {
+      const response = await api.changePassword(passwordData);
+      return { success: true, message: response.data.message };
+    } catch (error) {
+      console.error('Change password error:', error);
+      return { success: false, error: error.message };
+    }
   };
 
-  const hasRole = (role) => {
-    return user && user.role === role;
-  };
-
-  const hasAnyRole = (roles) => {
-    return user && roles.includes(user.role);
+  const signup = async (userData) => {
+    try {
+      const response = await api.signup(userData);
+      return { success: true, data: response.data };
+    } catch (error) {
+      console.error('Signup error:', error);
+      return { success: false, error: error.message };
+    }
   };
 
   const value = {
@@ -124,12 +77,13 @@ export const AuthProvider = ({ children }) => {
     token,
     loading,
     login,
-    signup,
-    changePassword,
     logout,
-    isAuthenticated,
-    hasRole,
-    hasAnyRole
+    changePassword,
+    signup,
+    isAuthenticated: !!user && !!token,
+    isAdmin: user?.role === 'admin',
+    isStaff: user?.role === 'staff',
+    isSchool: user?.role === 'school'
   };
 
   return (
@@ -138,3 +92,6 @@ export const AuthProvider = ({ children }) => {
     </AuthContext.Provider>
   );
 };
+
+// Import api here to avoid circular dependency
+import api from '../services/api.jsx';

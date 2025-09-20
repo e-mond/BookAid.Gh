@@ -1,25 +1,33 @@
 import React, { useState, useEffect } from 'react';
+import { useAuth } from '../contexts/AuthContext.jsx';
 import { useInventory } from '../contexts/InventoryContext.jsx';
+import Navbar from './Navbar.jsx';
 import Button from './common/Button.jsx';
 import Input from './common/Input.jsx';
 import Table from './common/Table.jsx';
 import Modal from './common/Modal.jsx';
 import Toast from './common/Toast.jsx';
 import { TableSkeleton } from './common/SkeletonWrapper.jsx';
+import { PlusIcon } from '@heroicons/react/24/outline';
 
 const BookRecords = () => {
+  const { isAdmin } = useAuth();
+  const { inventory, addYearlyBooks } = useInventory();
+  const [loading, setLoading] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [formData, setFormData] = useState({
     year: new Date().getFullYear(),
     booksAdded: '',
     budget: ''
   });
-  const [errors, setErrors] = useState({});
-  const [showToast, setShowToast] = useState(false);
-  const [toastMessage, setToastMessage] = useState('');
-  const [toastType, setToastType] = useState('success');
+  const [formErrors, setFormErrors] = useState({});
+  const [submitting, setSubmitting] = useState(false);
+  const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
 
-  const { inventory, loading, addYearlyBooks, getYearlyStats } = useInventory();
+  const showToast = (message, type = 'success') => {
+    setToast({ show: true, message, type });
+    setTimeout(() => setToast({ show: false, message: '', type: 'success' }), 3000);
+  };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -28,8 +36,9 @@ const BookRecords = () => {
       [name]: value
     }));
     
-    if (errors[name]) {
-      setErrors(prev => ({
+    // Clear error when user starts typing
+    if (formErrors[name]) {
+      setFormErrors(prev => ({
         ...prev,
         [name]: ''
       }));
@@ -37,205 +46,156 @@ const BookRecords = () => {
   };
 
   const validateForm = () => {
-    const newErrors = {};
-
+    const errors = {};
+    
     if (!formData.year || formData.year < 2020 || formData.year > 2030) {
-      newErrors.year = 'Year must be between 2020 and 2030';
+      errors.year = 'Year must be between 2020 and 2030';
     }
-
+    
     if (!formData.booksAdded || formData.booksAdded <= 0) {
-      newErrors.booksAdded = 'Books added must be a positive number';
-    } else if (formData.booksAdded > 1000000) {
-      newErrors.booksAdded = 'Books added seems unusually high';
+      errors.booksAdded = 'Books added must be greater than 0';
     }
-
+    
     if (!formData.budget || formData.budget <= 0) {
-      newErrors.budget = 'Budget must be a positive number';
+      errors.budget = 'Budget must be greater than 0';
     }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
   };
 
-  const handleSubmit = async (e) => {
+  const handleAddYearlyRecord = async (e) => {
     e.preventDefault();
     
     if (!validateForm()) {
       return;
     }
-
-    const result = await addYearlyBooks(
-      parseInt(formData.year),
-      parseInt(formData.booksAdded),
-      parseFloat(formData.budget)
-    );
     
-    if (result.success) {
-      setShowAddModal(false);
-      resetForm();
-      showToastMessage('Yearly book record added successfully', 'success');
-    } else {
-      showToastMessage(result.error || 'Failed to add yearly record', 'error');
+    setSubmitting(true);
+    try {
+      const result = await addYearlyBooks(
+        parseInt(formData.year),
+        parseInt(formData.booksAdded),
+        parseFloat(formData.budget)
+      );
+      
+      if (result.success) {
+        showToast('Yearly book record added successfully');
+        setShowAddModal(false);
+        setFormData({
+          year: new Date().getFullYear(),
+          booksAdded: '',
+          budget: ''
+        });
+      } else {
+        showToast(result.error, 'error');
+      }
+    } catch (error) {
+      console.error('Failed to add yearly record:', error);
+      showToast('Failed to add yearly record', 'error');
+    } finally {
+      setSubmitting(false);
     }
   };
 
-  const resetForm = () => {
-    setFormData({
-      year: new Date().getFullYear(),
-      booksAdded: '',
-      budget: ''
-    });
-    setErrors({});
-  };
+  const yearlyHeaders = ['Year', 'Books Added', 'Budget (GHS)', 'Distribution Rate'];
+  const yearlyData = inventory.yearlyRecords.map(record => ({
+    Year: record.year,
+    'Books Added': record.booksAdded.toLocaleString(),
+    'Budget (GHS)': `GHS ${record.budget.toLocaleString()}`,
+    'Distribution Rate': `${((inventory.distributed / record.booksAdded) * 100).toFixed(1)}%`
+  }));
 
-  const showToastMessage = (message, type) => {
-    setToastMessage(message);
-    setToastType(type);
-    setShowToast(true);
-  };
-
-  const handleToastClose = () => {
-    setShowToast(false);
-  };
-
-  const handleRowClick = (record) => {
-    // Show record details in console for now
-    console.log('Yearly record details:', record);
-  };
-
-  // Prepare table data
-  const yearlyStats = getYearlyStats();
-  const tableHeaders = ['Year', 'Books Added', 'Budget (GHS)', 'Cost per Book (GHS)'];
-  const tableData = yearlyStats.map(record => [
-    record.year,
-    record.booksAdded.toLocaleString(),
-    record.budget.toLocaleString(),
-    record.costPerBook.toFixed(2)
-  ]);
+  if (!isAdmin) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Navbar />
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="text-center">
+            <h1 className="text-2xl font-bold text-gray-900">Access Denied</h1>
+            <p className="text-gray-600 mt-2">You don't have permission to access this page.</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-gray-900">Book Records</h1>
-        <Button
-          variant="primary"
-          onClick={() => setShowAddModal(true)}
-          aria-label="Add yearly book record"
-        >
-          Add Yearly Record
-        </Button>
-      </div>
-
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white overflow-hidden shadow rounded-lg">
-          <div className="p-5">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <div className="w-8 h-8 bg-primary rounded-md flex items-center justify-center">
-                  <span className="text-white font-bold">📚</span>
-                </div>
-              </div>
-              <div className="ml-5 w-0 flex-1">
-                <dl>
-                  <dt className="text-sm font-medium text-gray-500 truncate">
-                    Total Books
-                  </dt>
-                  <dd className="text-lg font-medium text-gray-900">
-                    {inventory.totalBooks.toLocaleString()}
-                  </dd>
-                </dl>
-              </div>
+    <div className="min-h-screen bg-gray-50">
+      <Navbar />
+      
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="mb-8">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">Book Records</h1>
+              <p className="text-gray-600 mt-2">Manage yearly book distribution records</p>
             </div>
+            <Button
+              onClick={() => setShowAddModal(true)}
+              className="flex items-center space-x-2"
+            >
+              <PlusIcon className="h-5 w-5" />
+              <span>Add Yearly Record</span>
+            </Button>
           </div>
         </div>
 
-        <div className="bg-white overflow-hidden shadow rounded-lg">
-          <div className="p-5">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <div className="w-8 h-8 bg-success rounded-md flex items-center justify-center">
-                  <span className="text-white font-bold">📊</span>
-                </div>
-              </div>
-              <div className="ml-5 w-0 flex-1">
-                <dl>
-                  <dt className="text-sm font-medium text-gray-500 truncate">
-                    Distributed
-                  </dt>
-                  <dd className="text-lg font-medium text-gray-900">
-                    {inventory.distributed.toLocaleString()}
-                  </dd>
-                </dl>
-              </div>
-            </div>
+        {/* Summary Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <h3 className="text-lg font-medium text-gray-900 mb-2">Total Books</h3>
+            <p className="text-3xl font-bold text-blue-600">
+              {inventory.totalBooks.toLocaleString()}
+            </p>
+          </div>
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <h3 className="text-lg font-medium text-gray-900 mb-2">Distributed</h3>
+            <p className="text-3xl font-bold text-green-600">
+              {inventory.distributed.toLocaleString()}
+            </p>
+          </div>
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <h3 className="text-lg font-medium text-gray-900 mb-2">Remaining</h3>
+            <p className="text-3xl font-bold text-orange-600">
+              {inventory.remaining.toLocaleString()}
+            </p>
           </div>
         </div>
 
-        <div className="bg-white overflow-hidden shadow rounded-lg">
-          <div className="p-5">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <div className="w-8 h-8 bg-yellow-500 rounded-md flex items-center justify-center">
-                  <span className="text-white font-bold">📦</span>
-                </div>
-              </div>
-              <div className="ml-5 w-0 flex-1">
-                <dl>
-                  <dt className="text-sm font-medium text-gray-500 truncate">
-                    Remaining
-                  </dt>
-                  <dd className="text-lg font-medium text-gray-900">
-                    {inventory.remaining.toLocaleString()}
-                  </dd>
-                </dl>
-              </div>
-            </div>
+        <div className="bg-white rounded-lg shadow-md">
+          <div className="p-6">
+            {loading ? (
+              <TableSkeleton rows={5} columns={4} />
+            ) : (
+              <Table
+                headers={yearlyHeaders}
+                data={yearlyData}
+                emptyMessage="No yearly records found"
+              />
+            )}
           </div>
-        </div>
-      </div>
-
-      {/* Yearly Records Table */}
-      <div className="bg-white shadow rounded-lg">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h2 className="text-lg font-medium text-gray-900">Yearly Book Records</h2>
-        </div>
-        <div className="p-6">
-          {loading ? (
-            <TableSkeleton rows={5} columns={4} />
-          ) : (
-            <Table
-              headers={tableHeaders}
-              data={tableData}
-              onRowClick={handleRowClick}
-              emptyMessage="No yearly records found"
-            />
-          )}
         </div>
       </div>
 
       {/* Add Yearly Record Modal */}
       <Modal
         isOpen={showAddModal}
-        onClose={() => {
-          setShowAddModal(false);
-          resetForm();
-        }}
+        onClose={() => setShowAddModal(false)}
         title="Add Yearly Book Record"
         size="md"
       >
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleAddYearlyRecord} className="space-y-4">
           <Input
             label="Year"
             name="year"
             type="number"
             value={formData.year}
             onChange={handleInputChange}
-            error={errors.year}
-            required
+            error={formErrors.year}
             min="2020"
             max="2030"
-            placeholder="Enter year"
+            required
           />
 
           <Input
@@ -244,59 +204,51 @@ const BookRecords = () => {
             type="number"
             value={formData.booksAdded}
             onChange={handleInputChange}
-            error={errors.booksAdded}
-            required
+            error={formErrors.booksAdded}
+            placeholder="Enter number of books"
             min="1"
-            placeholder="Enter number of books added"
+            required
           />
 
           <Input
             label="Budget (GHS)"
             name="budget"
             type="number"
+            step="0.01"
             value={formData.budget}
             onChange={handleInputChange}
-            error={errors.budget}
-            required
-            min="0.01"
-            step="0.01"
+            error={formErrors.budget}
             placeholder="Enter budget amount"
+            min="0.01"
+            required
           />
 
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <h4 className="text-sm font-medium text-blue-800 mb-2">Cost Calculation</h4>
-            {formData.booksAdded && formData.budget && (
-              <p className="text-sm text-blue-600">
-                Cost per book: <strong>GHS {(formData.budget / formData.booksAdded).toFixed(2)}</strong>
-              </p>
-            )}
-          </div>
-
-          <div className="flex justify-end space-x-3">
+          <div className="flex space-x-3">
             <Button
               type="button"
               variant="secondary"
-              onClick={() => {
-                setShowAddModal(false);
-                resetForm();
-              }}
+              onClick={() => setShowAddModal(false)}
+              className="flex-1"
             >
               Cancel
             </Button>
-            <Button type="submit" variant="primary">
+            <Button
+              type="submit"
+              variant="primary"
+              loading={submitting}
+              className="flex-1"
+            >
               Add Record
             </Button>
           </div>
         </form>
       </Modal>
 
-      {/* Toast Notification */}
-      {showToast && (
+      {toast.show && (
         <Toast
-          message={toastMessage}
-          type={toastType}
-          onClose={handleToastClose}
-          duration={3000}
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast({ show: false, message: '', type: 'success' })}
         />
       )}
     </div>

@@ -1,117 +1,83 @@
 import React, { useState, useEffect } from 'react';
+import { useAuth } from '../contexts/AuthContext.jsx';
+import api from '../services/api.jsx';
+import { searchData } from '../utils/fuseSearch.jsx';
+import { exportToCSV } from '../utils/parseCSV.jsx';
+import Navbar from './Navbar.jsx';
+import Button from './common/Button.jsx';
+import Table from './common/Table.jsx';
+import { TableSkeleton, ChartSkeleton } from './common/SkeletonWrapper.jsx';
+import { 
+  MagnifyingGlassIcon,
+  DocumentArrowDownIcon,
+  DocumentTextIcon
+} from '@heroicons/react/24/outline';
 import { Pie } from 'react-chartjs-2';
-import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
+import {
+  Chart as ChartJS,
+  ArcElement,
+  Tooltip,
+  Legend,
+} from 'chart.js';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
-import { CSVLink } from 'react-csv';
-import api from '../services/api.jsx';
-import Button from './common/Button.jsx';
-import Input from './common/Input.jsx';
-import Table from './common/Table.jsx';
-import Toast from './common/Toast.jsx';
-import { searchReports } from '../utils/fuseSearch.jsx';
-import { TableSkeleton, ChartSkeleton } from './common/SkeletonWrapper.jsx';
 
 // Register Chart.js components
 ChartJS.register(ArcElement, Tooltip, Legend);
 
 const Reports = () => {
+  const { user } = useAuth();
   const [reports, setReports] = useState([]);
-  const [filteredReports, setFilteredReports] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
-  const [dateFilter, setDateFilter] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [showToast, setShowToast] = useState(false);
-  const [toastMessage, setToastMessage] = useState('');
-  const [toastType, setToastType] = useState('success');
+  const [dateFilter, setDateFilter] = useState('all');
 
   useEffect(() => {
     loadReports();
   }, []);
 
-  useEffect(() => {
-    let filtered = reports;
-
-    // Apply type filter
-    if (typeFilter !== 'all') {
-      filtered = filtered.filter(report => {
-        if (typeFilter === 'schools') {
-          return report.schoolId !== 'external';
-        } else if (typeFilter === 'external') {
-          return report.schoolId === 'external';
-        }
-        return true;
-      });
-    }
-
-    // Apply date filter
-    if (dateFilter) {
-      filtered = filtered.filter(report => {
-        const reportDate = new Date(report.issuedAt).toDateString();
-        const filterDate = new Date(dateFilter).toDateString();
-        return reportDate === filterDate;
-      });
-    }
-
-    // Apply search filter
-    if (searchQuery.trim()) {
-      filtered = searchReports(filtered, searchQuery);
-    }
-
-    setFilteredReports(filtered);
-  }, [reports, typeFilter, dateFilter, searchQuery]);
-
   const loadReports = async () => {
+    setLoading(true);
     try {
-      setLoading(true);
-      const response = await api.getReports();
+      const filters = {};
+      if (typeFilter !== 'all') {
+        filters.type = typeFilter;
+      }
+      
+      const response = await api.getReports(filters);
       setReports(response.data);
     } catch (error) {
-      console.error('Error loading reports:', error);
-      showToastMessage('Failed to load reports', 'error');
+      console.error('Failed to load reports:', error);
     } finally {
       setLoading(false);
     }
   };
 
+  const filteredReports = searchQuery 
+    ? searchData(reports, searchQuery, 'reports')
+    : reports;
+
   const getChartData = () => {
     const schoolReports = reports.filter(r => r.schoolId !== 'external');
     const externalReports = reports.filter(r => r.schoolId === 'external');
-
+    
     return {
-      labels: ['School Distributions', 'External Collections'],
+      labels: ['School Distributions', 'External Distributions'],
       datasets: [
         {
           data: [schoolReports.length, externalReports.length],
-          backgroundColor: ['#007BFF', '#28A745'],
-          borderColor: ['#0056b3', '#1e7e34'],
+          backgroundColor: [
+            '#3B82F6', // Blue
+            '#10B981', // Green
+          ],
+          borderColor: [
+            '#1E40AF',
+            '#059669',
+          ],
           borderWidth: 1,
         },
       ],
-    };
-  };
-
-  const getChartOptions = () => {
-    return {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: {
-          position: 'bottom',
-        },
-        tooltip: {
-          callbacks: {
-            label: function(context) {
-              const label = context.label || '';
-              const value = context.parsed;
-              const total = context.dataset.data.reduce((a, b) => a + b, 0);
-              const percentage = ((value / total) * 100).toFixed(1);
-              return `${label}: ${value} (${percentage}%)`;
-            }
-          }
-        }
-      }
     };
   };
 
@@ -127,184 +93,204 @@ const Reports = () => {
       doc.setFontSize(12);
       doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 20, 30);
       
-      // Add summary
-      doc.setFontSize(14);
-      doc.text('Summary', 20, 45);
-      
-      const schoolReports = reports.filter(r => r.schoolId !== 'external');
-      const externalReports = reports.filter(r => r.schoolId === 'external');
-      const totalBooks = reports.reduce((sum, r) => sum + r.books, 0);
-      
-      doc.setFontSize(10);
-      doc.text(`Total Distributions: ${reports.length}`, 20, 55);
-      doc.text(`School Distributions: ${schoolReports.length}`, 20, 60);
-      doc.text(`External Collections: ${externalReports.length}`, 20, 65);
-      doc.text(`Total Books Distributed: ${totalBooks.toLocaleString()}`, 20, 70);
-      
-      // Add table
-      doc.setFontSize(14);
-      doc.text('Distribution Details', 20, 85);
-      
+      // Prepare table data
       const tableData = filteredReports.map(report => [
         report.id,
-        report.schoolId === 'external' ? 'External' : report.schoolId,
+        report.studentId,
+        report.schoolId,
         report.books,
         new Date(report.issuedAt).toLocaleDateString(),
         report.issuedBy
       ]);
       
+      // Add table using autoTable
       doc.autoTable({
-        head: [['ID', 'School/Type', 'Books', 'Date', 'Issued By']],
+        head: [['ID', 'Student ID', 'School ID', 'Books', 'Issued Date', 'Issued By']],
         body: tableData,
-        startY: 90,
-        styles: { fontSize: 8 },
-        headStyles: { fillColor: [0, 123, 255] }
+        startY: 40,
+        styles: {
+          fontSize: 10,
+          cellPadding: 3,
+        },
+        headStyles: {
+          fillColor: [59, 130, 246], // Blue color
+          textColor: 255,
+          fontStyle: 'bold',
+        },
+        alternateRowStyles: {
+          fillColor: [249, 250, 251], // Light gray
+        },
       });
+      
+      // Add summary
+      const finalY = doc.lastAutoTable.finalY + 10;
+      doc.setFontSize(12);
+      doc.text('Summary:', 20, finalY);
+      doc.text(`Total Distributions: ${filteredReports.length}`, 20, finalY + 10);
+      doc.text(`Total Books Distributed: ${filteredReports.reduce((sum, r) => sum + r.books, 0)}`, 20, finalY + 20);
       
       // Save the PDF
       doc.save('freebooks-distribution-report.pdf');
-      showToastMessage('PDF exported successfully', 'success');
     } catch (error) {
-      console.error('Error exporting PDF:', error);
-      showToastMessage('Failed to export PDF', 'error');
+      console.error('Error generating PDF:', error);
+      alert('Failed to generate PDF. Please try again.');
     }
   };
 
-  const getCSVData = () => {
-    return filteredReports.map(report => ({
-      'ID': report.id,
-      'School/Type': report.schoolId === 'external' ? 'External' : report.schoolId,
-      'Books': report.books,
-      'Date': new Date(report.issuedAt).toLocaleDateString(),
-      'Issued By': report.issuedBy
-    }));
+  const handleCSVExport = () => {
+    try {
+      const csvData = filteredReports.map(report => ({
+        ID: report.id,
+        'Student ID': report.studentId,
+        'School ID': report.schoolId,
+        'Books': report.books,
+        'Issued Date': new Date(report.issuedAt).toLocaleDateString(),
+        'Issued By': report.issuedBy
+      }));
+      
+      exportToCSV(csvData, 'freebooks-distribution-report.csv');
+    } catch (error) {
+      console.error('Error exporting CSV:', error);
+      alert('Failed to export CSV. Please try again.');
+    }
   };
 
-  const showToastMessage = (message, type) => {
-    setToastMessage(message);
-    setToastType(type);
-    setShowToast(true);
-  };
-
-  const handleToastClose = () => {
-    setShowToast(false);
-  };
-
-  const handleRowClick = (report) => {
-    // Show report details in console for now
-    console.log('Report details:', report);
-  };
-
-  // Prepare table data
-  const tableHeaders = ['ID', 'School/Type', 'Books', 'Date', 'Issued By'];
-  const tableData = filteredReports.map(report => [
-    report.id,
-    report.schoolId === 'external' ? 'External' : report.schoolId,
-    report.books,
-    new Date(report.issuedAt).toLocaleDateString(),
-    report.issuedBy
-  ]);
+  const reportHeaders = ['ID', 'Student ID', 'School ID', 'Books', 'Issued Date', 'Issued By'];
+  const reportData = filteredReports.map(report => ({
+    ID: report.id,
+    'Student ID': report.studentId,
+    'School ID': report.schoolId,
+    'Books': report.books,
+    'Issued Date': new Date(report.issuedAt).toLocaleDateString(),
+    'Issued By': report.issuedBy
+  }));
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-gray-900">Reports</h1>
-        <div className="flex space-x-2">
-          <CSVLink
-            data={getCSVData()}
-            filename="freebooks-distribution-report.csv"
-            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-success hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-success"
-          >
-            Export CSV
-          </CSVLink>
-          <Button
-            variant="primary"
-            onClick={exportToPDF}
-            aria-label="Export to PDF"
-          >
-            Export PDF
-          </Button>
+    <div className="min-h-screen bg-gray-50">
+      <Navbar />
+      
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900">Reports</h1>
+          <p className="text-gray-600 mt-2">View and export distribution reports</p>
         </div>
-      </div>
 
-      {/* Filters */}
-      <div className="bg-white shadow rounded-lg p-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div>
-            <Input
-              type="text"
-              placeholder="Search reports..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full"
-            />
-          </div>
-          <div>
-            <select
-              value={typeFilter}
-              onChange={(e) => setTypeFilter(e.target.value)}
-              className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-success focus:border-success"
-            >
-              <option value="all">All Types</option>
-              <option value="schools">School Distributions</option>
-              <option value="external">External Collections</option>
-            </select>
-          </div>
-          <div>
-            <Input
-              type="date"
-              value={dateFilter}
-              onChange={(e) => setDateFilter(e.target.value)}
-              className="w-full"
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* Chart */}
-      <div className="bg-white shadow rounded-lg">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h2 className="text-lg font-medium text-gray-900">Distribution Overview</h2>
-        </div>
-        <div className="p-6">
-          {loading ? (
-            <ChartSkeleton />
-          ) : (
-            <div className="h-64">
-              <Pie data={getChartData()} options={getChartOptions()} />
+        {/* Filters and Export */}
+        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+          <div className="flex flex-col md:flex-row gap-4 items-end">
+            <div className="flex-1">
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
+                </div>
+                <input
+                  type="text"
+                  placeholder="Search reports..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-primary focus:border-primary sm:text-sm"
+                />
+              </div>
             </div>
-          )}
+            <div className="md:w-48">
+              <select
+                value={typeFilter}
+                onChange={(e) => setTypeFilter(e.target.value)}
+                className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
+              >
+                <option value="all">All Types</option>
+                <option value="schools">School Distributions</option>
+                <option value="external">External Distributions</option>
+              </select>
+            </div>
+            <div className="flex space-x-2">
+              <Button
+                onClick={handleCSVExport}
+                variant="secondary"
+                className="flex items-center space-x-2"
+              >
+                <DocumentArrowDownIcon className="h-4 w-4" />
+                <span>CSV</span>
+              </Button>
+              <Button
+                onClick={exportToPDF}
+                variant="primary"
+                className="flex items-center space-x-2"
+              >
+                <DocumentTextIcon className="h-4 w-4" />
+                <span>PDF</span>
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Chart */}
+          <div className="lg:col-span-1">
+            <div className="bg-white rounded-lg shadow-md p-6">
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">Distribution Overview</h2>
+              {loading ? (
+                <ChartSkeleton />
+              ) : (
+                <div className="h-64">
+                  <Pie data={getChartData()} options={{
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                      legend: {
+                        position: 'bottom',
+                      },
+                    },
+                  }} />
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Table */}
+          <div className="lg:col-span-2">
+            <div className="bg-white rounded-lg shadow-md">
+              <div className="p-6">
+                <h2 className="text-lg font-semibold text-gray-900 mb-4">Distribution Records</h2>
+                {loading ? (
+                  <TableSkeleton rows={10} columns={6} />
+                ) : (
+                  <Table
+                    headers={reportHeaders}
+                    data={reportData}
+                    emptyMessage="No distribution records found"
+                  />
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Summary Stats */}
+        <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <h3 className="text-lg font-medium text-gray-900 mb-2">Total Distributions</h3>
+            <p className="text-3xl font-bold text-blue-600">
+              {filteredReports.length}
+            </p>
+          </div>
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <h3 className="text-lg font-medium text-gray-900 mb-2">Total Books</h3>
+            <p className="text-3xl font-bold text-green-600">
+              {filteredReports.reduce((sum, report) => sum + report.books, 0).toLocaleString()}
+            </p>
+          </div>
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <h3 className="text-lg font-medium text-gray-900 mb-2">Average per Distribution</h3>
+            <p className="text-3xl font-bold text-purple-600">
+              {filteredReports.length > 0 
+                ? Math.round(filteredReports.reduce((sum, report) => sum + report.books, 0) / filteredReports.length)
+                : 0
+              }
+            </p>
+          </div>
         </div>
       </div>
-
-      {/* Reports Table */}
-      <div className="bg-white shadow rounded-lg">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h2 className="text-lg font-medium text-gray-900">Distribution Records</h2>
-        </div>
-        <div className="p-6">
-          {loading ? (
-            <TableSkeleton rows={5} columns={5} />
-          ) : (
-            <Table
-              headers={tableHeaders}
-              data={tableData}
-              onRowClick={handleRowClick}
-              emptyMessage="No reports found"
-            />
-          )}
-        </div>
-      </div>
-
-      {/* Toast Notification */}
-      {showToast && (
-        <Toast
-          message={toastMessage}
-          type={toastType}
-          onClose={handleToastClose}
-          duration={3000}
-        />
-      )}
     </div>
   );
 };

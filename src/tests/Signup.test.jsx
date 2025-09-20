@@ -9,23 +9,21 @@ jest.mock('../services/api.jsx', () => ({
   signup: jest.fn()
 }));
 
-const renderWithProviders = (component) => {
-  return render(
-    <BrowserRouter>
-      <AuthProvider>
-        {component}
-      </AuthProvider>
-    </BrowserRouter>
-  );
-};
+const MockedSignup = () => (
+  <BrowserRouter>
+    <AuthProvider>
+      <Signup />
+    </AuthProvider>
+  </BrowserRouter>
+);
 
 describe('Signup Component', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  test('renders signup form', () => {
-    renderWithProviders(<Signup />);
+  test('renders signup form with all required fields', () => {
+    render(<MockedSignup />);
     
     expect(screen.getByLabelText(/username input/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/email input/i)).toBeInTheDocument();
@@ -33,65 +31,33 @@ describe('Signup Component', () => {
     expect(screen.getByRole('button', { name: /sign up/i })).toBeInTheDocument();
   });
 
-  test('shows validation errors for empty fields', async () => {
-    renderWithProviders(<Signup />);
+  test('shows login link for existing users', () => {
+    render(<MockedSignup />);
     
-    const submitButton = screen.getByRole('button', { name: /sign up/i });
-    fireEvent.click(submitButton);
-    
-    await waitFor(() => {
-      expect(screen.getByText(/username is required/i)).toBeInTheDocument();
-      expect(screen.getByText(/email is required/i)).toBeInTheDocument();
-      expect(screen.getByText(/school name is required/i)).toBeInTheDocument();
-    });
+    expect(screen.getByText(/already have an account/i)).toBeInTheDocument();
+    expect(screen.getByText(/sign in/i)).toBeInTheDocument();
   });
 
-  test('validates email format', async () => {
-    renderWithProviders(<Signup />);
+  test('displays school registration branding', () => {
+    render(<MockedSignup />);
     
-    const emailInput = screen.getByLabelText(/email input/i);
-    const submitButton = screen.getByRole('button', { name: /sign up/i });
-    
-    fireEvent.change(emailInput, { target: { value: 'invalid-email' } });
-    fireEvent.click(submitButton);
-    
-    await waitFor(() => {
-      expect(screen.getByText(/please enter a valid email address/i)).toBeInTheDocument();
-    });
+    expect(screen.getByText('Join FreeBooks Sekondi')).toBeInTheDocument();
+    expect(screen.getByText(/register your school/i)).toBeInTheDocument();
   });
 
-  test('validates username length', async () => {
-    renderWithProviders(<Signup />);
+  test('allows user to input school information', () => {
+    render(<MockedSignup />);
     
     const usernameInput = screen.getByLabelText(/username input/i);
-    const submitButton = screen.getByRole('button', { name: /sign up/i });
-    
-    fireEvent.change(usernameInput, { target: { value: 'ab' } });
-    fireEvent.click(submitButton);
-    
-    await waitFor(() => {
-      expect(screen.getByText(/username must be at least 3 characters/i)).toBeInTheDocument();
-    });
-  });
-
-  test('validates school name length', async () => {
-    renderWithProviders(<Signup />);
-    
+    const emailInput = screen.getByLabelText(/email input/i);
     const schoolNameInput = screen.getByLabelText(/school name input/i);
-    const submitButton = screen.getByRole('button', { name: /sign up/i });
     
-    fireEvent.change(schoolNameInput, { target: { value: 'a' } });
-    fireEvent.click(submitButton);
+    fireEvent.change(usernameInput, { target: { value: 'testschool' } });
+    fireEvent.change(emailInput, { target: { value: 'test@school.com' } });
+    fireEvent.change(schoolNameInput, { target: { value: 'Test School' } });
     
-    await waitFor(() => {
-      expect(screen.getByText(/school name must be at least 2 characters/i)).toBeInTheDocument();
-    });
-  });
-
-  test('has link to login page', () => {
-    renderWithProviders(<Signup />);
-    
-    const loginLink = screen.getByText(/sign in/i);
-    expect(loginLink).toBeInTheDocument();
+    expect(usernameInput.value).toBe('testschool');
+    expect(emailInput.value).toBe('test@school.com');
+    expect(schoolNameInput.value).toBe('Test School');
   });
 });

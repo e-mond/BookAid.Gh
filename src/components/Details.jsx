@@ -1,361 +1,348 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Pie, Bar } from 'react-chartjs-2';
-import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement, Title } from 'chart.js';
+import { useAuth } from '../contexts/AuthContext.jsx';
 import api from '../services/api.jsx';
-import Button from './common/Button.jsx';
-import { useInventory } from '../contexts/InventoryContext.jsx';
-import { ChartSkeleton, TableSkeleton } from './common/SkeletonWrapper.jsx';
+import Navbar from './Navbar.jsx';
+import Table from './common/Table.jsx';
+import { TableSkeleton, ChartSkeleton } from './common/SkeletonWrapper.jsx';
+import { ArrowLeftIcon } from '@heroicons/react/24/outline';
+import { Pie, Bar } from 'react-chartjs-2';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  ArcElement,
+  Title,
+  Tooltip,
+  Legend,
+} from 'chart.js';
 
 // Register Chart.js components
-ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement, Title);
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  ArcElement,
+  Title,
+  Tooltip,
+  Legend
+);
 
 const Details = () => {
   const { type } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
-  const { inventory } = useInventory();
+  const [chartData, setChartData] = useState(null);
 
   useEffect(() => {
-    loadData();
+    loadDetailsData();
   }, [type]);
 
-  const loadData = async () => {
+  const loadDetailsData = async () => {
+    setLoading(true);
     try {
-      setLoading(true);
-      let response;
-      
-      switch (type) {
-        case 'total':
-          response = await api.getInventory();
-          setData([response.data]);
-          break;
-        case 'distributions':
-        case 'schools':
-        case 'external':
-          response = await api.getReports({ type: type === 'distributions' ? null : type });
-          setData(response.data);
-          break;
-        default:
-          setData([]);
+      const filters = {};
+      if (type !== 'all') {
+        filters.type = type;
       }
+      
+      const response = await api.getReports(filters);
+      setData(response.data);
+      
+      // Generate chart data based on type
+      generateChartData(response.data);
     } catch (error) {
-      console.error('Error loading data:', error);
-      setData([]);
+      console.error('Failed to load details data:', error);
     } finally {
       setLoading(false);
     }
   };
 
+  const generateChartData = (reports) => {
+    if (type === 'schools') {
+      // School distribution chart
+      const schoolData = {};
+      reports.forEach(report => {
+        if (report.schoolId !== 'external') {
+          schoolData[report.schoolId] = (schoolData[report.schoolId] || 0) + report.books;
+        }
+      });
+      
+      setChartData({
+        type: 'bar',
+        data: {
+          labels: Object.keys(schoolData),
+          datasets: [{
+            label: 'Books Distributed',
+            data: Object.values(schoolData),
+            backgroundColor: '#3B82F6',
+            borderColor: '#1E40AF',
+            borderWidth: 1,
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            title: {
+              display: true,
+              text: 'Books Distributed by School'
+            }
+          }
+        }
+      });
+    } else if (type === 'external') {
+      // External distribution pie chart
+      const monthlyData = {};
+      reports.forEach(report => {
+        if (report.schoolId === 'external') {
+          const month = new Date(report.issuedAt).toLocaleDateString('en-US', { month: 'short' });
+          monthlyData[month] = (monthlyData[month] || 0) + 1;
+        }
+      });
+      
+      setChartData({
+        type: 'pie',
+        data: {
+          labels: Object.keys(monthlyData),
+          datasets: [{
+            data: Object.values(monthlyData),
+            backgroundColor: [
+              '#3B82F6',
+              '#10B981',
+              '#F59E0B',
+              '#EF4444',
+              '#8B5CF6',
+              '#06B6D4'
+            ],
+            borderWidth: 1,
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            title: {
+              display: true,
+              text: 'External Distributions by Month'
+            }
+          }
+        }
+      });
+    } else if (type === 'distributions') {
+      // Overall distribution trend
+      const monthlyData = {};
+      reports.forEach(report => {
+        const month = new Date(report.issuedAt).toLocaleDateString('en-US', { month: 'short' });
+        monthlyData[month] = (monthlyData[month] || 0) + report.books;
+      });
+      
+      setChartData({
+        type: 'bar',
+        data: {
+          labels: Object.keys(monthlyData),
+          datasets: [{
+            label: 'Books Distributed',
+            data: Object.values(monthlyData),
+            backgroundColor: '#10B981',
+            borderColor: '#059669',
+            borderWidth: 1,
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            title: {
+              display: true,
+              text: 'Monthly Distribution Trend'
+            }
+          }
+        }
+      });
+    } else if (type === 'total') {
+      // Total books overview
+      const totalBooks = reports.reduce((sum, report) => sum + report.books, 0);
+      const schoolBooks = reports.filter(r => r.schoolId !== 'external').reduce((sum, report) => sum + report.books, 0);
+      const externalBooks = reports.filter(r => r.schoolId === 'external').reduce((sum, report) => sum + report.books, 0);
+      
+      setChartData({
+        type: 'pie',
+        data: {
+          labels: ['School Distributions', 'External Distributions'],
+          datasets: [{
+            data: [schoolBooks, externalBooks],
+            backgroundColor: ['#3B82F6', '#10B981'],
+            borderWidth: 1,
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            title: {
+              display: true,
+              text: 'Total Books Distribution'
+            }
+          }
+        }
+      });
+    }
+  };
+
   const getPageTitle = () => {
     switch (type) {
-      case 'total':
-        return 'Total Books Overview';
-      case 'distributions':
-        return 'All Distributions';
-      case 'schools':
-        return 'School Distributions';
-      case 'external':
-        return 'External Collections';
-      default:
-        return 'Details';
+      case 'total': return 'Total Books Overview';
+      case 'distributions': return 'Distribution Records';
+      case 'schools': return 'School Distributions';
+      case 'external': return 'External Distributions';
+      default: return 'Details';
     }
   };
 
   const getPageDescription = () => {
     switch (type) {
-      case 'total':
-        return 'Overview of total books in inventory and distribution statistics';
-      case 'distributions':
-        return 'Complete list of all book distributions and collections';
-      case 'schools':
-        return 'Books distributed to schools across Sekondi';
-      case 'external':
-        return 'Books collected by parents and external students';
-      default:
-        return 'Detailed information';
+      case 'total': return 'Overview of all book distributions';
+      case 'distributions': return 'All distribution records and trends';
+      case 'schools': return 'Book distributions to schools';
+      case 'external': return 'Book collections by external students';
+      default: return 'Detailed view of distribution data';
     }
   };
 
-  const renderTotalBooksView = () => {
-    if (loading) {
-      return <ChartSkeleton />;
-    }
-
-    const inventoryData = data[0] || inventory;
-    const distributionPercentage = (inventoryData.distributed / inventoryData.totalBooks) * 100;
-
-    const chartData = {
-      labels: ['Distributed', 'Remaining'],
-      datasets: [
-        {
-          data: [inventoryData.distributed, inventoryData.remaining],
-          backgroundColor: ['#28A745', '#6C757D'],
-          borderColor: ['#1e7e34', '#495057'],
-          borderWidth: 1,
-        },
-      ],
-    };
-
-    const chartOptions = {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: {
-          position: 'bottom',
-        },
-        tooltip: {
-          callbacks: {
-            label: function(context) {
-              const label = context.label || '';
-              const value = context.parsed;
-              const total = context.dataset.data.reduce((a, b) => a + b, 0);
-              const percentage = ((value / total) * 100).toFixed(1);
-              return `${label}: ${value.toLocaleString()} (${percentage}%)`;
-            }
-          }
-        }
-      }
-    };
-
-    return (
-      <div className="space-y-6">
-        {/* Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-white overflow-hidden shadow rounded-lg">
-            <div className="p-5">
-              <div className="flex items-center">
-                <div className="flex-shrink-0">
-                  <div className="w-8 h-8 bg-primary rounded-md flex items-center justify-center">
-                    <span className="text-white font-bold">📚</span>
-                  </div>
-                </div>
-                <div className="ml-5 w-0 flex-1">
-                  <dl>
-                    <dt className="text-sm font-medium text-gray-500 truncate">
-                      Total Books
-                    </dt>
-                    <dd className="text-lg font-medium text-gray-900">
-                      {inventoryData.totalBooks.toLocaleString()}
-                    </dd>
-                  </dl>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white overflow-hidden shadow rounded-lg">
-            <div className="p-5">
-              <div className="flex items-center">
-                <div className="flex-shrink-0">
-                  <div className="w-8 h-8 bg-success rounded-md flex items-center justify-center">
-                    <span className="text-white font-bold">📊</span>
-                  </div>
-                </div>
-                <div className="ml-5 w-0 flex-1">
-                  <dl>
-                    <dt className="text-sm font-medium text-gray-500 truncate">
-                      Distributed
-                    </dt>
-                    <dd className="text-lg font-medium text-gray-900">
-                      {inventoryData.distributed.toLocaleString()}
-                    </dd>
-                  </dl>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white overflow-hidden shadow rounded-lg">
-            <div className="p-5">
-              <div className="flex items-center">
-                <div className="flex-shrink-0">
-                  <div className="w-8 h-8 bg-yellow-500 rounded-md flex items-center justify-center">
-                    <span className="text-white font-bold">📦</span>
-                  </div>
-                </div>
-                <div className="ml-5 w-0 flex-1">
-                  <dl>
-                    <dt className="text-sm font-medium text-gray-500 truncate">
-                      Remaining
-                    </dt>
-                    <dd className="text-lg font-medium text-gray-900">
-                      {inventoryData.remaining.toLocaleString()}
-                    </dd>
-                  </dl>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Distribution Chart */}
-        <div className="bg-white shadow rounded-lg">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h2 className="text-lg font-medium text-gray-900">Distribution Overview</h2>
-          </div>
-          <div className="p-6">
-            <div className="h-64">
-              <Pie data={chartData} options={chartOptions} />
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  const renderDistributionsView = () => {
-    if (loading) {
-      return <TableSkeleton rows={10} columns={5} />;
-    }
-
-    const schoolReports = data.filter(r => r.schoolId !== 'external');
-    const externalReports = data.filter(r => r.schoolId === 'external');
-
-    const chartData = {
-      labels: ['School Distributions', 'External Collections'],
-      datasets: [
-        {
-          label: 'Number of Distributions',
-          data: [schoolReports.length, externalReports.length],
-          backgroundColor: ['#007BFF', '#28A745'],
-          borderColor: ['#0056b3', '#1e7e34'],
-          borderWidth: 1,
-        },
-      ],
-    };
-
-    const chartOptions = {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: {
-          position: 'bottom',
-        },
-        title: {
-          display: true,
-          text: 'Distribution Types'
-        }
-      },
-      scales: {
-        y: {
-          beginAtZero: true,
-          ticks: {
-            stepSize: 1
-          }
-        }
-      }
-    };
-
-    const tableHeaders = ['ID', 'School/Type', 'Books', 'Date', 'Issued By'];
-    const tableData = data.map(report => [
-      report.id,
-      report.schoolId === 'external' ? 'External' : report.schoolId,
-      report.books,
-      new Date(report.issuedAt).toLocaleDateString(),
-      report.issuedBy
-    ]);
-
-    return (
-      <div className="space-y-6">
-        {/* Chart */}
-        <div className="bg-white shadow rounded-lg">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h2 className="text-lg font-medium text-gray-900">Distribution Types</h2>
-          </div>
-          <div className="p-6">
-            <div className="h-64">
-              <Bar data={chartData} options={chartOptions} />
-            </div>
-          </div>
-        </div>
-
-        {/* Table */}
-        <div className="bg-white shadow rounded-lg">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h2 className="text-lg font-medium text-gray-900">Distribution Records</h2>
-          </div>
-          <div className="p-6">
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    {tableHeaders.map((header, index) => (
-                      <th
-                        key={index}
-                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                      >
-                        {header}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {tableData.map((row, rowIndex) => (
-                    <tr key={rowIndex}>
-                      {row.map((cell, cellIndex) => (
-                        <td
-                          key={cellIndex}
-                          className="px-6 py-4 whitespace-nowrap text-sm text-gray-900"
-                        >
-                          {cell}
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  const renderSchoolsView = () => {
-    return renderDistributionsView();
-  };
-
-  const renderExternalView = () => {
-    return renderDistributionsView();
-  };
-
-  const renderContent = () => {
+  const getTableHeaders = () => {
     switch (type) {
-      case 'total':
-        return renderTotalBooksView();
-      case 'distributions':
-        return renderDistributionsView();
       case 'schools':
-        return renderSchoolsView();
+        return ['School ID', 'Books Distributed', 'Records Count'];
       case 'external':
-        return renderExternalView();
+        return ['Student ID', 'Books Collected', 'Collection Date', 'Issued By'];
       default:
-        return (
-          <div className="text-center py-8">
-            <p className="text-gray-500">Invalid page type</p>
-          </div>
-        );
+        return ['ID', 'Student ID', 'School ID', 'Books', 'Issued Date', 'Issued By'];
+    }
+  };
+
+  const getTableData = () => {
+    switch (type) {
+      case 'schools': {
+        const schoolData = {};
+        data.forEach(report => {
+          if (report.schoolId !== 'external') {
+            if (!schoolData[report.schoolId]) {
+              schoolData[report.schoolId] = { books: 0, count: 0 };
+            }
+            schoolData[report.schoolId].books += report.books;
+            schoolData[report.schoolId].count += 1;
+          }
+        });
+        
+        return Object.entries(schoolData).map(([schoolId, stats]) => ({
+          'School ID': schoolId,
+          'Books Distributed': stats.books,
+          'Records Count': stats.count
+        }));
+      }
+      case 'external': {
+        return data.filter(report => report.schoolId === 'external').map(report => ({
+          'Student ID': report.studentId,
+          'Books Collected': report.books,
+          'Collection Date': new Date(report.issuedAt).toLocaleDateString(),
+          'Issued By': report.issuedBy
+        }));
+      }
+      default: {
+        return data.map(report => ({
+          ID: report.id,
+          'Student ID': report.studentId,
+          'School ID': report.schoolId,
+          'Books': report.books,
+          'Issued Date': new Date(report.issuedAt).toLocaleDateString(),
+          'Issued By': report.issuedBy
+        }));
+      }
     }
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">{getPageTitle()}</h1>
-          <p className="text-gray-600 mt-1">{getPageDescription()}</p>
+    <div className="min-h-screen bg-gray-50">
+      <Navbar />
+      
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="mb-8">
+          <button
+            onClick={() => navigate('/')}
+            className="flex items-center text-gray-600 hover:text-gray-900 mb-4"
+          >
+            <ArrowLeftIcon className="h-5 w-5 mr-2" />
+            Back to Dashboard
+          </button>
+          
+          <h1 className="text-3xl font-bold text-gray-900">{getPageTitle()}</h1>
+          <p className="text-gray-600 mt-2">{getPageDescription()}</p>
         </div>
-        <Button
-          variant="secondary"
-          onClick={() => navigate('/')}
-        >
-          Back to Dashboard
-        </Button>
-      </div>
 
-      {renderContent()}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Chart */}
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">Visualization</h2>
+            {loading ? (
+              <ChartSkeleton />
+            ) : chartData ? (
+              <div className="h-64">
+                {chartData.type === 'pie' ? (
+                  <Pie data={chartData.data} options={chartData.options} />
+                ) : (
+                  <Bar data={chartData.data} options={chartData.options} />
+                )}
+              </div>
+            ) : (
+              <div className="h-64 flex items-center justify-center text-gray-500">
+                No chart data available
+              </div>
+            )}
+          </div>
+
+          {/* Summary Stats */}
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">Summary</h2>
+            <div className="space-y-4">
+              <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg">
+                <span className="text-blue-800 font-medium">Total Records</span>
+                <span className="text-blue-900 font-bold text-xl">{data.length}</span>
+              </div>
+              <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg">
+                <span className="text-green-800 font-medium">Total Books</span>
+                <span className="text-green-900 font-bold text-xl">
+                  {data.reduce((sum, report) => sum + report.books, 0).toLocaleString()}
+                </span>
+              </div>
+              <div className="flex justify-between items-center p-3 bg-purple-50 rounded-lg">
+                <span className="text-purple-800 font-medium">Average per Record</span>
+                <span className="text-purple-900 font-bold text-xl">
+                  {data.length > 0 
+                    ? Math.round(data.reduce((sum, report) => sum + report.books, 0) / data.length)
+                    : 0
+                  }
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Data Table */}
+        <div className="mt-6 bg-white rounded-lg shadow-md">
+          <div className="p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">Data Details</h2>
+            {loading ? (
+              <TableSkeleton rows={10} columns={getTableHeaders().length} />
+            ) : (
+              <Table
+                headers={getTableHeaders()}
+                data={getTableData()}
+                emptyMessage="No data available"
+              />
+            )}
+          </div>
+        </div>
+      </div>
     </div>
   );
 };

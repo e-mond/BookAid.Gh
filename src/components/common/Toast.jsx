@@ -1,149 +1,76 @@
-import React, { useState, useEffect } from 'react';
-import { CheckCircleIcon, XCircleIcon, InformationCircleIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
-import { XMarkIcon } from '@heroicons/react/24/solid';
+import React, { useEffect, useState } from 'react';
+import { CheckCircleIcon, XCircleIcon, InformationCircleIcon } from '@heroicons/react/24/outline';
 
-const Toast = ({
-  message,
-  type = 'success',
-  duration = 3000,
-  onClose,
-  show = true,
-  position = 'top-right'
+const Toast = ({ 
+  message, 
+  type = 'success', 
+  duration = 3000, 
+  onClose, 
+  show = true 
 }) => {
   const [isVisible, setIsVisible] = useState(show);
 
   useEffect(() => {
-    setIsVisible(show);
-    
-    if (show && duration > 0) {
+    if (show) {
+      setIsVisible(true);
       const timer = setTimeout(() => {
-        handleClose();
+        setIsVisible(false);
+        setTimeout(() => onClose && onClose(), 300); // Wait for animation
       }, duration);
 
       return () => clearTimeout(timer);
     }
-  }, [show, duration]);
+  }, [show, duration, onClose]);
 
-  const handleClose = () => {
-    setIsVisible(false);
-    setTimeout(() => {
-      onClose && onClose();
-    }, 300); // Wait for animation to complete
+  const icons = {
+    success: <CheckCircleIcon className="h-5 w-5 text-green-400" />,
+    error: <XCircleIcon className="h-5 w-5 text-red-400" />,
+    info: <InformationCircleIcon className="h-5 w-5 text-blue-400" />
   };
 
-  const getIcon = () => {
-    switch (type) {
-      case 'success':
-        return <CheckCircleIcon className="h-5 w-5 text-green-400" />;
-      case 'error':
-        return <XCircleIcon className="h-5 w-5 text-red-400" />;
-      case 'warning':
-        return <ExclamationTriangleIcon className="h-5 w-5 text-yellow-400" />;
-      case 'info':
-        return <InformationCircleIcon className="h-5 w-5 text-blue-400" />;
-      default:
-        return <CheckCircleIcon className="h-5 w-5 text-green-400" />;
-    }
-  };
-
-  const getBackgroundColor = () => {
-    switch (type) {
-      case 'success':
-        return 'bg-green-50 border-green-200';
-      case 'error':
-        return 'bg-red-50 border-red-200';
-      case 'warning':
-        return 'bg-yellow-50 border-yellow-200';
-      case 'info':
-        return 'bg-blue-50 border-blue-200';
-      default:
-        return 'bg-green-50 border-green-200';
-    }
-  };
-
-  const getTextColor = () => {
-    switch (type) {
-      case 'success':
-        return 'text-green-800';
-      case 'error':
-        return 'text-red-800';
-      case 'warning':
-        return 'text-yellow-800';
-      case 'info':
-        return 'text-blue-800';
-      default:
-        return 'text-green-800';
-    }
-  };
-
-  const getPositionClasses = () => {
-    switch (position) {
-      case 'top-left':
-        return 'top-4 left-4';
-      case 'top-center':
-        return 'top-4 left-1/2 transform -translate-x-1/2';
-      case 'top-right':
-        return 'top-4 right-4';
-      case 'bottom-left':
-        return 'bottom-4 left-4';
-      case 'bottom-center':
-        return 'bottom-4 left-1/2 transform -translate-x-1/2';
-      case 'bottom-right':
-        return 'bottom-4 right-4';
-      default:
-        return 'top-4 right-4';
-    }
+  const colors = {
+    success: 'bg-green-50 border-green-200 text-green-800',
+    error: 'bg-red-50 border-red-200 text-red-800',
+    info: 'bg-blue-50 border-blue-200 text-blue-800'
   };
 
   if (!isVisible) return null;
 
   return (
     <div
-      className={`fixed ${getPositionClasses()} z-50 max-w-sm w-full bg-white shadow-lg rounded-lg pointer-events-auto ring-1 ring-black ring-opacity-5 overflow-hidden transition-all duration-300 ease-in-out transform ${
-        isVisible ? 'translate-y-0 opacity-100' : '-translate-y-2 opacity-0'
+      className={`fixed top-4 right-4 z-50 max-w-sm w-full bg-white border rounded-lg shadow-lg transform transition-all duration-300 ${
+        isVisible ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'
       }`}
       role="status"
       aria-live="polite"
     >
-      <div className={`p-4 border-l-4 ${getBackgroundColor()}`}>
+      <div className={`p-4 border-l-4 ${colors[type]}`}>
         <div className="flex items-start">
           <div className="flex-shrink-0">
-            {getIcon()}
+            {icons[type]}
           </div>
           <div className="ml-3 w-0 flex-1">
-            <p className={`text-sm font-medium ${getTextColor()}`}>
+            <p className="text-sm font-medium">
               {message}
             </p>
           </div>
           <div className="ml-4 flex-shrink-0 flex">
             <button
-              className={`inline-flex ${getTextColor()} hover:opacity-75 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary rounded-md`}
-              onClick={handleClose}
+              className="inline-flex text-gray-400 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-primary"
+              onClick={() => {
+                setIsVisible(false);
+                setTimeout(() => onClose && onClose(), 300);
+              }}
               aria-label="Close notification"
             >
-              <XMarkIcon className="h-4 w-4" />
+              <span className="sr-only">Close</span>
+              <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+              </svg>
             </button>
           </div>
         </div>
       </div>
-    </div>
-  );
-};
-
-// Toast Container Component
-export const ToastContainer = ({ toasts, onRemove }) => {
-  return (
-    <div className="fixed top-4 right-4 z-50 space-y-2">
-      {toasts.map((toast, index) => (
-        <Toast
-          key={toast.id || index}
-          message={toast.message}
-          type={toast.type}
-          duration={toast.duration}
-          onClose={() => onRemove && onRemove(toast.id || index)}
-          show={toast.show !== false}
-        />
-      ))}
     </div>
   );
 };

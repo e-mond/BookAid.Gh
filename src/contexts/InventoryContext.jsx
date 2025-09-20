@@ -18,30 +18,27 @@ export const InventoryProvider = ({ children }) => {
     remaining: 300000,
     yearlyRecords: []
   });
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(false);
 
-  // Load inventory data
+  // Load inventory data on mount
   useEffect(() => {
     loadInventory();
   }, []);
 
   const loadInventory = async () => {
+    setLoading(true);
     try {
-      setLoading(true);
-      setError(null);
       const response = await api.getInventory();
-      setInventory(response.data);
-    } catch (error) {
-      console.error('Error loading inventory:', error);
-      setError(error.message);
-      // Fallback to default values
+      const data = response.data;
       setInventory({
-        totalBooks: 300000,
-        distributed: 0,
-        remaining: 300000,
-        yearlyRecords: []
+        totalBooks: data.totalBooks,
+        distributed: data.distributed,
+        remaining: data.totalBooks - data.distributed,
+        yearlyRecords: data.yearlyRecords || []
       });
+    } catch (error) {
+      console.error('Failed to load inventory:', error);
+      // Keep default values on error
     } finally {
       setLoading(false);
     }
@@ -49,54 +46,43 @@ export const InventoryProvider = ({ children }) => {
 
   const addYearlyBooks = async (year, booksAdded, budget) => {
     try {
-      setLoading(true);
-      setError(null);
-      
-      const response = await api.addYearlyBooks({
-        year,
-        booksAdded,
-        budget
-      });
+      const yearlyData = { year, booksAdded, budget };
+      await api.addYearlyBooks(yearlyData);
       
       // Update local state
       setInventory(prev => ({
         ...prev,
         totalBooks: prev.totalBooks + booksAdded,
         remaining: prev.remaining + booksAdded,
-        yearlyRecords: [...prev.yearlyRecords, response.data]
+        yearlyRecords: [...prev.yearlyRecords, yearlyData]
       }));
       
-      return { success: true, data: response.data };
+      return { success: true };
     } catch (error) {
-      console.error('Error adding yearly books:', error);
-      setError(error.message);
-      return { 
-        success: false, 
-        error: error.message || 'Failed to add yearly books' 
-      };
-    } finally {
-      setLoading(false);
+      console.error('Failed to add yearly books:', error);
+      return { success: false, error: error.message };
     }
   };
 
-  const updateDistribution = (booksDistributed) => {
+  const deductBooks = (amount) => {
     setInventory(prev => ({
       ...prev,
-      distributed: prev.distributed + booksDistributed,
-      remaining: prev.remaining - booksDistributed
+      distributed: prev.distributed + amount,
+      remaining: prev.remaining - amount
     }));
   };
 
   const getDistributionStats = () => {
-    const distributionPercentage = inventory.totalBooks > 0 
-      ? (inventory.distributed / inventory.totalBooks) * 100 
-      : 0;
+    const totalDistributed = inventory.distributed;
+    const schoolDistributions = 0; // This would be calculated from actual data
+    const externalDistributions = 0; // This would be calculated from actual data
     
     return {
+      totalDistributed,
+      schoolDistributions,
+      externalDistributions,
       totalBooks: inventory.totalBooks,
-      distributed: inventory.distributed,
-      remaining: inventory.remaining,
-      distributionPercentage: Math.round(distributionPercentage * 100) / 100
+      remaining: inventory.remaining
     };
   };
 
@@ -105,23 +91,18 @@ export const InventoryProvider = ({ children }) => {
       year: record.year,
       booksAdded: record.booksAdded,
       budget: record.budget,
-      costPerBook: record.budget / record.booksAdded
+      distributionRate: inventory.distributed / record.booksAdded * 100
     }));
-  };
-
-  const refreshInventory = () => {
-    loadInventory();
   };
 
   const value = {
     inventory,
     loading,
-    error,
+    loadInventory,
     addYearlyBooks,
-    updateDistribution,
+    deductBooks,
     getDistributionStats,
-    getYearlyStats,
-    refreshInventory
+    getYearlyStats
   };
 
   return (
