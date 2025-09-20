@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useInventory } from '../contexts/InventoryContext';
 import { apiService } from '../services/api';
@@ -43,6 +43,12 @@ const Dashboard = () => {
       setActivityLogs(logsData.slice(0, 10)); // Show last 10 activities
     } catch (error) {
       console.error('Error loading dashboard data:', error);
+      // Set fallback data to prevent UI breaking
+      setStats({
+        schoolsApproved: 0,
+        studentsCovered: 0
+      });
+      setActivityLogs([]);
     } finally {
       setLoading(false);
     }
@@ -51,8 +57,8 @@ const Dashboard = () => {
   // Get inventory statistics
   const inventoryStats = getStats();
 
-  // Get role-specific quick actions
-  const getQuickActions = () => {
+  // Get role-specific quick actions (memoized for performance)
+  const quickActions = useMemo(() => {
     if (hasRole('school')) {
       return [
         {
@@ -90,19 +96,17 @@ const Dashboard = () => {
     }
 
     return [];
-  };
+  }, [hasRole]);
 
-  const quickActions = getQuickActions();
-
-  // Format activity log entry
-  const formatActivityLog = (log) => {
+  // Format activity log entry (memoized for performance)
+  const formatActivityLog = useCallback((log) => {
     const date = new Date(log.timestamp);
     return {
       ...log,
       formattedDate: date.toLocaleDateString(),
       formattedTime: date.toLocaleTimeString()
     };
-  };
+  }, []);
 
   return (
     <div className="pt-16 min-h-screen bg-background">
@@ -136,15 +140,17 @@ const Dashboard = () => {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-8">
           {/* Remaining Books */}
-          <div className="bg-white rounded-lg shadow-md p-6" role="region" aria-label="Remaining books">
+          <div className="bg-white rounded-xl shadow-lg hover:shadow-xl transition-shadow duration-300 p-6 border border-gray-100" role="region" aria-label="Remaining books">
             <div className="flex items-center">
               <div className="flex-shrink-0">
-                <BookOpenIcon className="h-8 w-8 text-blue-500" />
+                <div className="p-3 bg-blue-100 rounded-lg">
+                  <BookOpenIcon className="h-6 w-6 text-blue-600" />
+                </div>
               </div>
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-500">Remaining Books</p>
+                <p className="text-sm font-medium text-gray-600">Remaining Books</p>
                 {loading ? (
                   <Skeleton height={32} width={100} />
                 ) : (
@@ -157,13 +163,15 @@ const Dashboard = () => {
           </div>
 
           {/* Distributed Books */}
-          <div className="bg-white rounded-lg shadow-md p-6" role="region" aria-label="Distributed books">
+          <div className="bg-white rounded-xl shadow-lg hover:shadow-xl transition-shadow duration-300 p-6 border border-gray-100" role="region" aria-label="Distributed books">
             <div className="flex items-center">
               <div className="flex-shrink-0">
-                <CheckCircleIcon className="h-8 w-8 text-green-500" />
+                <div className="p-3 bg-green-100 rounded-lg">
+                  <CheckCircleIcon className="h-6 w-6 text-green-600" />
+                </div>
               </div>
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-500">Distributed</p>
+                <p className="text-sm font-medium text-gray-600">Distributed</p>
                 {loading ? (
                   <Skeleton height={32} width={100} />
                 ) : (
@@ -176,13 +184,15 @@ const Dashboard = () => {
           </div>
 
           {/* Schools Approved */}
-          <div className="bg-white rounded-lg shadow-md p-6" role="region" aria-label="Schools approved">
+          <div className="bg-white rounded-xl shadow-lg hover:shadow-xl transition-shadow duration-300 p-6 border border-gray-100" role="region" aria-label="Schools approved">
             <div className="flex items-center">
               <div className="flex-shrink-0">
-                <UsersIcon className="h-8 w-8 text-purple-500" />
+                <div className="p-3 bg-purple-100 rounded-lg">
+                  <UsersIcon className="h-6 w-6 text-purple-600" />
+                </div>
               </div>
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-500">Schools Approved</p>
+                <p className="text-sm font-medium text-gray-600">Schools Approved</p>
                 {loading ? (
                   <Skeleton height={32} width={100} />
                 ) : (
@@ -195,13 +205,15 @@ const Dashboard = () => {
           </div>
 
           {/* Students Covered */}
-          <div className="bg-white rounded-lg shadow-md p-6" role="region" aria-label="Students covered">
+          <div className="bg-white rounded-xl shadow-lg hover:shadow-xl transition-shadow duration-300 p-6 border border-gray-100" role="region" aria-label="Students covered">
             <div className="flex items-center">
               <div className="flex-shrink-0">
-                <UsersIcon className="h-8 w-8 text-orange-500" />
+                <div className="p-3 bg-orange-100 rounded-lg">
+                  <UsersIcon className="h-6 w-6 text-orange-600" />
+                </div>
               </div>
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-500">Students Covered</p>
+                <p className="text-sm font-medium text-gray-600">Students Covered</p>
                 {loading ? (
                   <Skeleton height={32} width={100} />
                 ) : (
@@ -217,21 +229,23 @@ const Dashboard = () => {
         {/* Quick Actions */}
         {quickActions.length > 0 && (
           <div className="mb-8">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">Quick Actions</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <h2 className="text-xl font-semibold text-gray-900 mb-6">Quick Actions</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
               {quickActions.map((action, index) => {
                 const Icon = action.icon;
                 return (
                   <a
                     key={index}
                     href={action.href}
-                    className={`${action.color} text-white rounded-lg p-6 transition-colors`}
+                    className={`${action.color} text-white rounded-xl p-6 transition-all duration-300 hover:scale-105 hover:shadow-lg transform`}
                   >
                     <div className="flex items-center">
-                      <Icon className="h-8 w-8 mr-4" />
+                      <div className="p-2 bg-white bg-opacity-20 rounded-lg mr-4">
+                        <Icon className="h-6 w-6" />
+                      </div>
                       <div>
                         <h3 className="text-lg font-semibold">{action.name}</h3>
-                        <p className="text-blue-100">{action.description}</p>
+                        <p className="text-sm opacity-90 mt-1">{action.description}</p>
                       </div>
                     </div>
                   </a>
@@ -242,8 +256,8 @@ const Dashboard = () => {
         )}
 
         {/* Recent Activity */}
-        <div className="bg-white rounded-lg shadow-md">
-          <div className="px-6 py-4 border-b border-gray-200">
+        <div className="bg-white rounded-xl shadow-lg border border-gray-100">
+          <div className="px-6 py-5 border-b border-gray-200">
             <h2 className="text-xl font-semibold text-gray-900">Recent Activity</h2>
           </div>
           <div className="p-6">
@@ -257,29 +271,39 @@ const Dashboard = () => {
                   activityLogs.map((log) => {
                     const formattedLog = formatActivityLog(log);
                     return (
-                      <div key={log.id} className="flex items-start space-x-4 p-4 bg-gray-50 rounded-lg">
+                      <div key={log.id} className="flex items-start space-x-4 p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors duration-200">
                         <div className="flex-shrink-0">
-                          {log.type === 'approval' && (
-                            <CheckCircleIcon className="h-6 w-6 text-green-500" />
-                          )}
-                          {log.type === 'delivery' && (
-                            <BookOpenIcon className="h-6 w-6 text-blue-500" />
-                          )}
-                          {log.type === 'collection' && (
-                            <UsersIcon className="h-6 w-6 text-purple-500" />
-                          )}
-                          {log.type === 'submission' && (
-                            <ExclamationTriangleIcon className="h-6 w-6 text-orange-500" />
-                          )}
+                          <div className="p-2 rounded-lg">
+                            {log.type === 'approval' && (
+                              <div className="p-2 bg-green-100 rounded-lg">
+                                <CheckCircleIcon className="h-5 w-5 text-green-600" />
+                              </div>
+                            )}
+                            {log.type === 'delivery' && (
+                              <div className="p-2 bg-blue-100 rounded-lg">
+                                <BookOpenIcon className="h-5 w-5 text-blue-600" />
+                              </div>
+                            )}
+                            {log.type === 'collection' && (
+                              <div className="p-2 bg-purple-100 rounded-lg">
+                                <UsersIcon className="h-5 w-5 text-purple-600" />
+                              </div>
+                            )}
+                            {log.type === 'submission' && (
+                              <div className="p-2 bg-orange-100 rounded-lg">
+                                <ExclamationTriangleIcon className="h-5 w-5 text-orange-600" />
+                              </div>
+                            )}
+                          </div>
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-gray-900">
+                          <p className="text-sm font-semibold text-gray-900">
                             {formattedLog.action}
                           </p>
-                          <p className="text-sm text-gray-500">
+                          <p className="text-sm text-gray-600 mt-1">
                             {formattedLog.details}
                           </p>
-                          <p className="text-xs text-gray-400 mt-1">
+                          <p className="text-xs text-gray-500 mt-2">
                             {formattedLog.formattedDate} at {formattedLog.formattedTime}
                           </p>
                         </div>
@@ -287,7 +311,13 @@ const Dashboard = () => {
                     );
                   })
                 ) : (
-                  <p className="text-gray-500 text-center py-8">No recent activity</p>
+                  <div className="text-center py-12">
+                    <div className="mx-auto w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                      <ExclamationTriangleIcon className="h-6 w-6 text-gray-400" />
+                    </div>
+                    <p className="text-gray-500 text-sm">No recent activity</p>
+                    <p className="text-gray-400 text-xs mt-1">Activity will appear here as users interact with the system</p>
+                  </div>
                 )}
               </div>
             )}

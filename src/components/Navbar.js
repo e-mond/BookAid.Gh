@@ -81,7 +81,7 @@ const Navbar = () => {
   };
 
   return (
-    <nav className="bg-primary shadow-lg fixed w-full top-0 z-50">
+    <nav className="bg-blue-600 shadow-lg fixed w-full top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
           {/* Logo and Brand */}
@@ -102,10 +102,10 @@ const Navbar = () => {
                 <Link
                   key={item.name}
                   to={item.href}
-                  className={`flex items-center space-x-1 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                  className={`flex items-center space-x-1 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
                     isActive(item.href)
-                      ? 'bg-blue-700 text-white'
-                      : 'text-blue-100 hover:bg-blue-700 hover:text-white'
+                      ? 'bg-blue-700 text-white shadow-sm'
+                      : 'text-blue-100 hover:bg-blue-700 hover:text-white hover:shadow-sm'
                   }`}
                   aria-current={isActive(item.href) ? 'page' : undefined}
                 >
@@ -129,7 +129,7 @@ const Navbar = () => {
             {/* Logout Button */}
             <button
               onClick={handleLogout}
-              className="bg-blue-700 hover:bg-blue-800 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors"
+              className="bg-blue-700 hover:bg-blue-800 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-300 focus:ring-offset-2 focus:ring-offset-blue-600"
               aria-label="Logout"
             >
               Logout
@@ -173,10 +173,10 @@ const Navbar = () => {
                   key={item.name}
                   to={item.href}
                   onClick={() => setMobileMenuOpen(false)}
-                  className={`flex items-center space-x-2 px-3 py-2 rounded-md text-base font-medium transition-colors ${
+                  className={`flex items-center space-x-2 px-3 py-2 rounded-lg text-base font-medium transition-all duration-200 ${
                     isActive(item.href)
-                      ? 'bg-blue-700 text-white'
-                      : 'text-blue-100 hover:bg-blue-700 hover:text-white'
+                      ? 'bg-blue-700 text-white shadow-sm'
+                      : 'text-blue-100 hover:bg-blue-700 hover:text-white hover:shadow-sm'
                   }`}
                   aria-current={isActive(item.href) ? 'page' : undefined}
                 >
@@ -196,7 +196,7 @@ const Navbar = () => {
               </div>
               <button
                 onClick={handleLogout}
-                className="w-full text-left px-3 py-2 text-blue-100 hover:bg-blue-700 hover:text-white rounded-md text-base font-medium transition-colors"
+                className="w-full text-left px-3 py-2 text-blue-100 hover:bg-blue-700 hover:text-white rounded-lg text-base font-medium transition-all duration-200 hover:shadow-sm"
               >
                 Logout
               </button>

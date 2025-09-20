@@ -2,6 +2,7 @@ import React, { Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { InventoryProvider } from './contexts/InventoryContext';
+import ErrorBoundary from './components/ErrorBoundary';
 import Navbar from './components/Navbar';
 import Login from './components/Login';
 import Dashboard from './components/Dashboard';
@@ -165,15 +166,17 @@ const AppRoutes = () => {
  */
 const App = () => {
   return (
-    <AuthProvider>
-      <InventoryProvider>
-        <Router>
-          <div className="App">
-            <AppRoutes />
-          </div>
-        </Router>
-      </InventoryProvider>
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <InventoryProvider>
+          <Router>
+            <div className="App">
+              <AppRoutes />
+            </div>
+          </Router>
+        </InventoryProvider>
+      </AuthProvider>
+    </ErrorBoundary>
   );
 };
 
