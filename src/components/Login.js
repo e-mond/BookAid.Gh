@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useToastContext } from '../contexts/ToastContext';
 import { BookOpenIcon } from '@heroicons/react/24/outline';
 
 /**
@@ -17,6 +18,7 @@ const Login = () => {
   const [error, setError] = useState('');
 
   const { login } = useAuth();
+  const { showSuccess, showError } = useToastContext();
   const navigate = useNavigate();
 
   // Handle form input changes
@@ -40,13 +42,16 @@ const Login = () => {
       const result = await login(formData.username, formData.password, formData.role);
       
       if (result.success) {
+        showSuccess('Login Successful', `Welcome back, ${formData.username}!`);
         // Redirect based on role
         navigate('/dashboard');
       } else {
         setError('Login failed. Please check your credentials.');
+        showError('Login Failed', 'Please check your credentials and try again.');
       }
     } catch (err) {
       setError('An error occurred during login. Please try again.');
+      showError('Login Error', 'An unexpected error occurred. Please try again.');
       console.error('Login error:', err);
     } finally {
       setLoading(false);
@@ -55,7 +60,7 @@ const Login = () => {
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
+      <div className="max-w-md w-full space-y-8" role="main" aria-label="Login form">
         {/* Header */}
         <div className="text-center">
           <div className="flex justify-center">
@@ -70,17 +75,17 @@ const Login = () => {
         </div>
 
         {/* Login Form */}
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          <div className="bg-white rounded-lg shadow-md p-8 space-y-6">
+        <form className="mt-8 space-y-6" onSubmit={handleSubmit} aria-label="Login form">
+          <div className="card p-8 space-y-6 animate-fade-in">
             {/* Error Message */}
             {error && (
-              <div className="bg-red-50 border border-red-200 rounded-md p-4">
+              <div className="bg-error-50 border border-error-200 rounded-lg p-4 animate-slide-up">
                 <div className="flex">
                   <div className="ml-3">
-                    <h3 className="text-sm font-medium text-red-800">
+                    <h3 className="text-sm font-medium text-error-800">
                       Login Error
                     </h3>
-                    <div className="mt-2 text-sm text-red-700">
+                    <div className="mt-2 text-sm text-error-700">
                       {error}
                     </div>
                   </div>
@@ -90,7 +95,7 @@ const Login = () => {
 
             {/* Username Input */}
             <div>
-              <label htmlFor="username" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="username" className="form-label">
                 Username
               </label>
               <input
@@ -100,7 +105,7 @@ const Login = () => {
                 required
                 value={formData.username}
                 onChange={handleChange}
-                className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent focus-ring"
+                className="form-input"
                 placeholder="Enter your username"
                 aria-label="Username input"
                 disabled={loading}
@@ -109,7 +114,7 @@ const Login = () => {
 
             {/* Password Input */}
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="password" className="form-label">
                 Password
               </label>
               <input
@@ -119,7 +124,7 @@ const Login = () => {
                 required
                 value={formData.password}
                 onChange={handleChange}
-                className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent focus-ring"
+                className="form-input"
                 placeholder="Enter your password"
                 aria-label="Password input"
                 disabled={loading}
@@ -128,7 +133,7 @@ const Login = () => {
 
             {/* Role Selection */}
             <div>
-              <label htmlFor="role" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="role" className="form-label">
                 Role
               </label>
               <select
@@ -136,7 +141,7 @@ const Login = () => {
                 name="role"
                 value={formData.role}
                 onChange={handleChange}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent focus-ring"
+                className="form-input"
                 disabled={loading}
                 aria-label="Select your role"
               >
@@ -151,10 +156,10 @@ const Login = () => {
               <button
                 type="submit"
                 disabled={loading}
-                className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-primary hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary focus-ring disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="btn-primary w-full"
               >
                 {loading ? (
-                  <div className="flex items-center">
+                  <div className="flex items-center justify-center">
                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
                     Logging in...
                   </div>
@@ -167,11 +172,11 @@ const Login = () => {
         </form>
 
         {/* Demo Credentials */}
-        <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
-          <h3 className="text-sm font-medium text-blue-800 mb-2">
+        <div className="bg-primary-50 border border-primary-200 rounded-lg p-4 animate-fade-in">
+          <h3 className="text-sm font-medium text-primary-800 mb-2">
             Demo Credentials
           </h3>
-          <div className="text-xs text-blue-700 space-y-1">
+          <div className="text-xs text-primary-700 space-y-1">
             <p><strong>School:</strong> school1 / password123</p>
             <p><strong>Admin:</strong> admin1 / password123</p>
             <p><strong>Staff:</strong> staff1 / password123</p>

@@ -129,7 +129,7 @@ const Navbar = () => {
             {/* Logout Button */}
             <button
               onClick={handleLogout}
-              className="bg-blue-700 hover:bg-blue-800 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors"
+              className="btn-primary px-4 py-2 text-sm"
               aria-label="Logout"
             >
               Logout
@@ -157,15 +157,15 @@ const Navbar = () => {
       {/* Mobile Navigation Menu */}
       <Transition
         show={mobileMenuOpen}
-        enter="transition ease-out duration-100"
+        enter="transition ease-out duration-200"
         enterFrom="transform opacity-0 scale-95"
         enterTo="transform opacity-100 scale-100"
-        leave="transition ease-in duration-75"
+        leave="transition ease-in duration-150"
         leaveFrom="transform opacity-100 scale-100"
         leaveTo="transform opacity-0 scale-95"
       >
         <div className="md:hidden">
-          <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3 bg-blue-800">
+          <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3 bg-primary-800 shadow-lg">
             {navigationItems.map((item) => {
               const Icon = item.icon;
               return (
@@ -175,8 +175,8 @@ const Navbar = () => {
                   onClick={() => setMobileMenuOpen(false)}
                   className={`flex items-center space-x-2 px-3 py-2 rounded-md text-base font-medium transition-colors ${
                     isActive(item.href)
-                      ? 'bg-blue-700 text-white'
-                      : 'text-blue-100 hover:bg-blue-700 hover:text-white'
+                      ? 'bg-primary-700 text-white'
+                      : 'text-primary-100 hover:bg-primary-700 hover:text-white'
                   }`}
                   aria-current={isActive(item.href) ? 'page' : undefined}
                 >
@@ -187,8 +187,8 @@ const Navbar = () => {
             })}
             
             {/* Mobile User Info */}
-            <div className="border-t border-blue-700 pt-4 mt-4">
-              <div className="flex items-center space-x-2 px-3 py-2 text-blue-100">
+            <div className="border-t border-primary-700 pt-4 mt-4">
+              <div className="flex items-center space-x-2 px-3 py-2 text-primary-100">
                 <UserIcon className="h-5 w-5" />
                 <span className="text-sm">
                   {user?.name} ({user?.role})
@@ -196,7 +196,7 @@ const Navbar = () => {
               </div>
               <button
                 onClick={handleLogout}
-                className="w-full text-left px-3 py-2 text-blue-100 hover:bg-blue-700 hover:text-white rounded-md text-base font-medium transition-colors"
+                className="w-full text-left px-3 py-2 text-primary-100 hover:bg-primary-700 hover:text-white rounded-md text-base font-medium transition-colors"
               >
                 Logout
               </button>
