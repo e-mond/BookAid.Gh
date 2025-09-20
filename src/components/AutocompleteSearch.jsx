@@ -6,19 +6,19 @@ import { apiService } from '../services/api';
  * AutocompleteSearch component with fuzzy search functionality
  * Uses Fuse.js for fuzzy searching and provides keyboard navigation
  */
-const AutocompleteSearch = ({ 
-  placeholder = "Search...", 
-  onSelect, 
+const AutocompleteSearch = ({
+  placeholder = "Search...",
+  onSelect,
   searchType = 'students',
   className = "",
-  disabled = false 
+  disabled = false
 }) => {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState([]);
   const [isOpen, setIsOpen] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(-1);
   const [loading, setLoading] = useState(false);
-  
+
   const inputRef = useRef(null);
   const resultsRef = useRef(null);
   const fuseRef = useRef(null);
@@ -38,6 +38,8 @@ const AutocompleteSearch = ({
     if (!query.trim()) {
       setResults([]);
       setIsOpen(false);
+      setSelectedIndex(-1);
+      setLoading(false);
       return;
     }
 
@@ -45,13 +47,13 @@ const AutocompleteSearch = ({
       setLoading(true);
       try {
         let searchResults = [];
-        
+
         if (searchType === 'students') {
           const students = await apiService.searchStudents(query);
-          fuseRef.current.setCollection(students);
+          fuseRef.current.setCollection(students || []);
           searchResults = fuseRef.current.search(query).map(result => result.item);
         }
-        
+
         setResults(searchResults.slice(0, 10)); // Limit to 10 results
         setIsOpen(searchResults.length > 0);
         setSelectedIndex(-1);
@@ -59,6 +61,7 @@ const AutocompleteSearch = ({
         console.error('Search error:', error);
         setResults([]);
         setIsOpen(false);
+        setSelectedIndex(-1);
       } finally {
         setLoading(false);
       }
@@ -77,7 +80,7 @@ const AutocompleteSearch = ({
     setQuery(result.name);
     setIsOpen(false);
     setSelectedIndex(-1);
-    onSelect && onSelect(result);
+    if (onSelect) onSelect(result);
   };
 
   // Handle keyboard navigation
@@ -87,7 +90,7 @@ const AutocompleteSearch = ({
     switch (e.key) {
       case 'ArrowDown':
         e.preventDefault();
-        setSelectedIndex(prev => 
+        setSelectedIndex(prev =>
           prev < results.length - 1 ? prev + 1 : prev
         );
         break;
@@ -105,13 +108,20 @@ const AutocompleteSearch = ({
         setIsOpen(false);
         setSelectedIndex(-1);
         break;
+      default:
+        break;
     }
   };
 
   // Handle click outside to close dropdown
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (inputRef.current && !inputRef.current.contains(event.target)) {
+      if (
+        inputRef.current &&
+        !inputRef.current.contains(event.target) &&
+        resultsRef.current &&
+        !resultsRef.current.contains(event.target)
+      ) {
         setIsOpen(false);
         setSelectedIndex(-1);
       }
@@ -122,7 +132,7 @@ const AutocompleteSearch = ({
   }, []);
 
   return (
-    <div className={`relative ${className}`} ref={inputRef}>
+    <div className={`relative ${className}`}>
       {/* Search Input */}
       <input
         ref={inputRef}

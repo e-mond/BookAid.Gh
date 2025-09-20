@@ -14,7 +14,8 @@ import DeliveryEntry from './components/DeliveryEntry.jsx';
 import ParentCollection from './components/ParentCollection.jsx';
 import Reports from './components/Reports.jsx';
 import Details from './components/Details.jsx';
-import { ToastContainer } from './components/common/Toast.jsx';
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 // Lazy load heavy components for better performance
 const LazyReports = React.lazy(() => import('./components/Reports.jsx'));
@@ -207,7 +208,14 @@ const App = () => {
           <AppLayout>
             <AppRoutes />
           </AppLayout>
-          <ToastContainer />
+          <ToastContainer
+            position="top-right"
+            autoClose={3000}
+            hideProgressBar
+            closeOnClick
+            pauseOnHover
+            draggable
+          />
         </Router>
       </InventoryProvider>
     </AuthProvider>

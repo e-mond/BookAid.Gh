@@ -2,14 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import { useInventory } from '../contexts/InventoryContext.jsx';
+import { toast } from 'react-toastify';
 import api from '../services/api.jsx';
 import Button from './common/Button.jsx';
 import Input from './common/Input.jsx';
 import Table from './common/Table.jsx';
 import Modal from './common/Modal.jsx';
-import Toast from './common/Toast.jsx';
 import { searchLogs } from '../utils/fuseSearch.jsx';
 import { CardSkeleton, TableSkeleton } from './common/SkeletonWrapper.jsx';
+import 'react-toastify/dist/ReactToastify.css';
 
 const Dashboard = () => {
   const [recentActivities, setRecentActivities] = useState([]);
@@ -18,9 +19,6 @@ const Dashboard = () => {
   const [selectedActivity, setSelectedActivity] = useState(null);
   const [showActivityModal, setShowActivityModal] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [showToast, setShowToast] = useState(false);
-  const [toastMessage, setToastMessage] = useState('');
-  const [toastType, setToastType] = useState('success');
 
   const { user } = useAuth();
   const { inventory, getDistributionStats } = useInventory();
@@ -43,23 +41,17 @@ const Dashboard = () => {
     try {
       setLoading(true);
       const response = await api.getLogs(user.role);
-      setRecentActivities(response.data);
+      setRecentActivities(response.data || []);
     } catch (error) {
       console.error('Error loading activities:', error);
-      showToastMessage('Failed to load recent activities', 'error');
+      toast.error('Failed to load recent activities');
     } finally {
       setLoading(false);
     }
   };
 
   const showToastMessage = (message, type) => {
-    setToastMessage(message);
-    setToastType(type);
-    setShowToast(true);
-  };
-
-  const handleToastClose = () => {
-    setShowToast(false);
+    toast(message, { type: type || 'success', autoClose: 3000 });
   };
 
   const handleCardClick = (type) => {
@@ -73,6 +65,9 @@ const Dashboard = () => {
 
   const getRoleBasedCards = () => {
     const stats = getDistributionStats();
+    
+    // Import mocks for dynamic data (adjust path if needed)
+    const { deliveries, reports, schools, users } = require('../mocks.jsx');
     
     if (user.role === 'admin') {
       return [
@@ -94,7 +89,7 @@ const Dashboard = () => {
         },
         {
           title: 'School Distributions',
-          value: '1,200',
+          value: deliveries.reduce((sum, d) => sum + d.booksDelivered, 0).toLocaleString(),
           subtitle: 'Books to schools',
           type: 'schools',
           icon: '🏫',
@@ -102,7 +97,7 @@ const Dashboard = () => {
         },
         {
           title: 'External Distributions',
-          value: '800',
+          value: reports.filter(r => r.schoolId === 'external').reduce((sum, r) => sum + r.books, 0).toLocaleString(),
           subtitle: 'Parental collections',
           type: 'external',
           icon: '👨‍👩‍👧‍👦',
@@ -113,7 +108,7 @@ const Dashboard = () => {
       return [
         {
           title: 'Deliveries Made',
-          value: '45',
+          value: deliveries.filter(d => d.deliveredBy === user.id).length.toString(),
           subtitle: 'School deliveries',
           type: 'deliveries',
           icon: '🚚',
@@ -121,7 +116,7 @@ const Dashboard = () => {
         },
         {
           title: 'Collections Processed',
-          value: '120',
+          value: reports.filter(r => r.issuedBy === user.id && r.schoolId === 'external').length.toString(),
           subtitle: 'Parental collections',
           type: 'collections',
           icon: '📋',
@@ -129,10 +124,11 @@ const Dashboard = () => {
         }
       ];
     } else if (user.role === 'school') {
+      const mySchool = schools.find(s => s.id === user.schoolId);
       return [
         {
           title: 'My School Stats',
-          value: '100',
+          value: mySchool?.totalDeclared.toString() || '0',
           subtitle: 'Students declared',
           type: 'school-stats',
           icon: '🏫',
@@ -140,7 +136,7 @@ const Dashboard = () => {
         },
         {
           title: 'Submissions',
-          value: '1',
+          value: schools.filter(s => s.id === user.schoolId && s.status === 'pending').length.toString(),
           subtitle: 'Pending approval',
           type: 'submissions',
           icon: '📝',
@@ -155,11 +151,11 @@ const Dashboard = () => {
   const getRoleBasedBackground = () => {
     switch (user.role) {
       case 'staff':
-        return 'bg-blue-50'; // #E6F0FA equivalent
+        return 'bg-blue-50';
       case 'school':
-        return 'bg-green-50'; // #E6FFE6 equivalent
+        return 'bg-green-50';
       case 'admin':
-        return 'bg-gray-50'; // #F9FAFB equivalent
+        return 'bg-gray-50';
       default:
         return 'bg-gray-50';
     }
@@ -326,16 +322,6 @@ const Dashboard = () => {
           </div>
         )}
       </Modal>
-
-      {/* Toast Notification */}
-      {showToast && (
-        <Toast
-          message={toastMessage}
-          type={toastType}
-          onClose={handleToastClose}
-          duration={3000}
-        />
-      )}
     </div>
   );
 };

@@ -101,8 +101,8 @@ const isValidEmail = (email) => {
 
 // Helper function to validate phone number (basic validation)
 const isValidPhone = (phone) => {
-  const phoneRegex = /^[\+]?[1-9][\d]{0,15}$/;
-  return phoneRegex.test(phone.replace(/[\s\-\(\)]/g, ''));
+  const phoneRegex = /^[+-]?[1-9][0-9]{0,15}$/;
+  return phoneRegex.test(phone.replace(/[ \-\(\)]/g, ''));
 };
 
 // Validation for individual student data
