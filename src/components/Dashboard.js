@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useInventory } from '../contexts/InventoryContext';
 import { apiService } from '../services/api';
-import Skeleton from 'react-loading-skeleton';
-import 'react-loading-skeleton/dist/skeleton.css';
+import LoadingSpinner, { SkeletonLoader, CardSkeleton } from './LoadingSpinner';
 import { 
   BookOpenIcon, 
   UsersIcon, 
@@ -138,7 +138,7 @@ const Dashboard = () => {
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           {/* Remaining Books */}
-          <div className="bg-white rounded-lg shadow-md p-6" role="region" aria-label="Remaining books">
+          <div className="card p-6 animate-slide-up" role="region" aria-label="Remaining books">
             <div className="flex items-center">
               <div className="flex-shrink-0">
                 <BookOpenIcon className="h-8 w-8 text-blue-500" />
@@ -146,7 +146,7 @@ const Dashboard = () => {
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-500">Remaining Books</p>
                 {loading ? (
-                  <Skeleton height={32} width={100} />
+                  <SkeletonLoader lines={1} height="h-8" width="w-24" />
                 ) : (
                   <p className="text-2xl font-bold text-gray-900">
                     {inventoryStats.remaining.toLocaleString()}
@@ -157,7 +157,7 @@ const Dashboard = () => {
           </div>
 
           {/* Distributed Books */}
-          <div className="bg-white rounded-lg shadow-md p-6" role="region" aria-label="Distributed books">
+          <div className="card p-6 animate-slide-up" role="region" aria-label="Distributed books" style={{animationDelay: '0.1s'}}>
             <div className="flex items-center">
               <div className="flex-shrink-0">
                 <CheckCircleIcon className="h-8 w-8 text-green-500" />
@@ -165,7 +165,7 @@ const Dashboard = () => {
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-500">Distributed</p>
                 {loading ? (
-                  <Skeleton height={32} width={100} />
+                  <SkeletonLoader lines={1} height="h-8" width="w-24" />
                 ) : (
                   <p className="text-2xl font-bold text-gray-900">
                     {inventoryStats.distributed.toLocaleString()}
@@ -176,7 +176,7 @@ const Dashboard = () => {
           </div>
 
           {/* Schools Approved */}
-          <div className="bg-white rounded-lg shadow-md p-6" role="region" aria-label="Schools approved">
+          <div className="card p-6 animate-slide-up" role="region" aria-label="Schools approved" style={{animationDelay: '0.2s'}}>
             <div className="flex items-center">
               <div className="flex-shrink-0">
                 <UsersIcon className="h-8 w-8 text-purple-500" />
@@ -184,7 +184,7 @@ const Dashboard = () => {
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-500">Schools Approved</p>
                 {loading ? (
-                  <Skeleton height={32} width={100} />
+                  <SkeletonLoader lines={1} height="h-8" width="w-24" />
                 ) : (
                   <p className="text-2xl font-bold text-gray-900">
                     {stats?.schoolsApproved || 0}
@@ -195,7 +195,7 @@ const Dashboard = () => {
           </div>
 
           {/* Students Covered */}
-          <div className="bg-white rounded-lg shadow-md p-6" role="region" aria-label="Students covered">
+          <div className="card p-6 animate-slide-up" role="region" aria-label="Students covered" style={{animationDelay: '0.3s'}}>
             <div className="flex items-center">
               <div className="flex-shrink-0">
                 <UsersIcon className="h-8 w-8 text-orange-500" />
@@ -203,7 +203,7 @@ const Dashboard = () => {
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-500">Students Covered</p>
                 {loading ? (
-                  <Skeleton height={32} width={100} />
+                  <SkeletonLoader lines={1} height="h-8" width="w-24" />
                 ) : (
                   <p className="text-2xl font-bold text-gray-900">
                     {stats?.studentsCovered || 0}
@@ -222,10 +222,10 @@ const Dashboard = () => {
               {quickActions.map((action, index) => {
                 const Icon = action.icon;
                 return (
-                  <a
+                  <Link
                     key={index}
-                    href={action.href}
-                    className={`${action.color} text-white rounded-lg p-6 transition-colors`}
+                    to={action.href}
+                    className={`${action.color} text-white rounded-lg p-6 transition-colors block`}
                   >
                     <div className="flex items-center">
                       <Icon className="h-8 w-8 mr-4" />
@@ -234,7 +234,7 @@ const Dashboard = () => {
                         <p className="text-blue-100">{action.description}</p>
                       </div>
                     </div>
-                  </a>
+                  </Link>
                 );
               })}
             </div>
@@ -242,14 +242,16 @@ const Dashboard = () => {
         )}
 
         {/* Recent Activity */}
-        <div className="bg-white rounded-lg shadow-md">
-          <div className="px-6 py-4 border-b border-gray-200">
+        <div className="card">
+          <div className="card-header">
             <h2 className="text-xl font-semibold text-gray-900">Recent Activity</h2>
           </div>
-          <div className="p-6">
+          <div className="card-body">
             {loading ? (
               <div className="space-y-4">
-                <Skeleton count={5} height={60} />
+                {Array.from({ length: 5 }).map((_, index) => (
+                  <CardSkeleton key={index} />
+                ))}
               </div>
             ) : (
               <div className="space-y-4">
