@@ -46,6 +46,16 @@ export const reportSearchOptions = {
   ]
 };
 
+// Log search configuration
+export const logSearchOptions = {
+  ...defaultOptions,
+  keys: [
+    { name: 'action', weight: 0.4 },
+    { name: 'details', weight: 0.4 },
+    { name: 'userId', weight: 0.2 }
+  ]
+};
+
 // Generic search function
 export const createSearch = (data, options = defaultOptions) => {
   const fuse = new Fuse(data, options);
@@ -88,6 +98,14 @@ export const searchUsers = (users, query) => {
 export const searchReports = (reports, query) => {
   const fuse = new Fuse(reports, reportSearchOptions);
   if (!query || query.trim().length === 0) return reports;
+  
+  const results = fuse.search(query);
+  return results.map(result => result.item);
+};
+
+export const searchLogs = (logs, query) => {
+  const fuse = new Fuse(logs, logSearchOptions);
+  if (!query || query.trim().length === 0) return logs;
   
   const results = fuse.search(query);
   return results.map(result => result.item);
