@@ -93,6 +93,24 @@ export const searchReports = (reports, query) => {
   return results.map(result => result.item);
 };
 
+// Log/Activity search configuration
+export const logSearchOptions = {
+  ...defaultOptions,
+  keys: [
+    { name: 'action', weight: 0.4 },
+    { name: 'description', weight: 0.4 },
+    { name: 'user', weight: 0.2 }
+  ]
+};
+
+export const searchLogs = (logs, query) => {
+  const fuse = new Fuse(logs, logSearchOptions);
+  if (!query || query.trim().length === 0) return logs;
+  
+  const results = fuse.search(query);
+  return results.map(result => result.item);
+};
+
 // Advanced search with filters
 export const advancedSearch = (data, query, filters = {}) => {
   let results = data;
