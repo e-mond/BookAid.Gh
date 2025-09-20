@@ -1,59 +1,44 @@
 # FreeBooks Sekondi
 
-A comprehensive React application for managing the distribution of 300,000 free exercise books (20 per student) in Sekondi. The system supports multiple user roles and provides a complete workflow from school submission to parent collection.
+A React frontend application for tracking the yearly distribution of 300,000 free exercise books in Sekondi. The application provides role-based access for system administrators, staff, and school administrators to manage book distribution, school submissions, and parental collections.
 
 ## Features
 
-### 🎯 Core Functionality
-- **Multi-role Authentication**: Admin, School, and Staff roles with different permissions
-- **School Submission**: Multi-step form for schools to submit student lists
-- **Admin Approval**: Review and approve school submissions with delivery tracking
-- **Parent Collection**: Staff-assisted book collection with eligibility verification
-- **Inventory Management**: Real-time tracking of 300,000 books with atomic updates
-- **Reports & Analytics**: Comprehensive reporting with charts and export functionality
+### System Administrator (Role: 'admin')
+- **User Management**: Create and remove users with different roles
+- **Book Records**: Add and manage yearly book records with budget tracking
+- **School Approvals**: Review and approve school submissions
+- **Comprehensive Reports**: View all distribution activities and generate reports
+- **Dashboard**: Overview of total distributions, books, and system metrics
 
-### 🎨 User Experience
-- **Responsive Design**: Mobile-first approach with Tailwind CSS
-- **Accessibility**: ARIA attributes, keyboard navigation, and screen reader support
-- **Loading States**: Skeleton loaders for all async operations
-- **Error Handling**: User-friendly error messages with retry options
-- **Real-time Validation**: Form validation with immediate feedback
+### Staff (Role: 'staff')
+- **Delivery Entry**: Record school deliveries with timestamps and quantities
+- **Parent Collection**: Process parental book collections with QR code receipts
+- **Activity Tracking**: View delivery and collection activities
+- **Reports**: Access distribution reports and statistics
 
-### 🔧 Technical Features
-- **State Management**: React Context API for auth and inventory
-- **API Integration**: Axios with fallback to mock data for demo
-- **File Uploads**: Drag-and-drop file uploads with progress tracking
-- **Search**: Fuzzy search with Fuse.js for student lookup
-- **Charts**: Interactive pie charts with Chart.js
-- **Export**: PDF and CSV export functionality
-- **QR Codes**: Receipt generation with QR codes for verification
+### School Administrators (Role: 'school')
+- **School Registration**: Sign up schools with automatic password generation
+- **School Submission**: Submit student lists with optional notes (max 500 characters)
+- **Submission History**: View submission status and history
+- **Dashboard**: Monitor own school statistics and submissions
 
 ## Technology Stack
 
-- **Frontend**: React 18, JavaScript (ES6+)
-- **Routing**: React Router v6
-- **Styling**: Tailwind CSS with custom theme
-- **State Management**: React Context API
-- **HTTP Client**: Axios
-- **Charts**: Chart.js with react-chartjs-2
-- **File Handling**: react-dropzone
-- **Date Picker**: react-datepicker
-- **Search**: Fuse.js for fuzzy search
-- **QR Codes**: qrcode.react
-- **PDF Generation**: jsPDF
-- **CSV Export**: react-csv
-- **UI Components**: Headless UI
-- **Icons**: Heroicons
-- **Loading**: react-loading-skeleton
-- **Testing**: Jest + React Testing Library
+- **React 18** with JavaScript
+- **React Router v6** for navigation
+- **Tailwind CSS** for styling
+- **Context API** for state management
+- **Axios** for API calls
+- **Chart.js** for data visualization
+- **jsPDF** with autoTable for PDF generation
+- **React Dropzone** for file uploads
+- **React DatePicker** for date selection
+- **QRCode React** for receipt generation
+- **Fuse.js** for search functionality
+- **React Loading Skeleton** for loading states
 
 ## Installation
-
-### Prerequisites
-- Node.js (v16 or higher)
-- npm or yarn
-
-### Setup Instructions
 
 1. **Clone the repository**
    ```bash
@@ -74,197 +59,176 @@ A comprehensive React application for managing the distribution of 300,000 free 
 4. **Open your browser**
    Navigate to `http://localhost:3000`
 
-## Usage
+## Configuration
+
+### Mock Data vs Real API
+
+The application uses mock data by default. To switch to a real API:
+
+1. Open `src/services/api.jsx`
+2. Change `useMocks = false` to use real API endpoints
+3. Update the `API_BASE_URL` to point to your backend
 
 ### Demo Credentials
 
-The application includes demo credentials for testing:
+Use these credentials to test different user roles:
 
-- **School Administrator**: `school1` / `password123`
-- **System Administrator**: `admin1` / `password123`
-- **Collection Staff**: `staff1` / `password123`
-
-### User Roles & Permissions
-
-#### School Administrator
-- Submit student lists for book distribution
-- View submission status
-- Access dashboard with school-specific statistics
-
-#### System Administrator
-- Review and approve school submissions
-- Confirm book deliveries
-- Access comprehensive reports
-- Manage inventory
-
-#### Collection Staff
-- Help parents collect books
-- Verify student eligibility
-- Generate collection receipts with QR codes
-- View collection reports
-
-### Workflow
-
-1. **School Submission**: Schools submit student lists through a multi-step form
-2. **Admin Review**: Administrators review submissions and approve eligible schools
-3. **Delivery**: Books are delivered to schools with proof documentation
-4. **Parent Collection**: Staff assist parents in collecting books for their children
-5. **Reporting**: Comprehensive reports track all distributions and collections
-
-## Configuration
-
-### Switching from Mock to Real API
-
-The application is configured to use mock data by default. To connect to a real backend:
-
-1. **Update API Base URL**
-   ```javascript
-   // In src/services/api.js
-   const api = axios.create({
-     baseURL: 'https://your-api-domain.com/api', // Change this
-     // ... rest of config
-   });
-   ```
-
-2. **Implement Backend Endpoints**
-   The following endpoints should be implemented:
-   - `POST /api/auth/login` - User authentication
-   - `POST /api/schools/submit` - School submission
-   - `GET /api/schools/pending` - Get pending schools
-   - `POST /api/schools/{id}/approve` - Approve school
-   - `POST /api/schools/{id}/deliver` - Confirm delivery
-   - `GET /api/students/search` - Search students
-   - `POST /api/students/collect` - Collect books
-   - `POST /api/students/check-eligibility` - Check eligibility
-   - `GET /api/inventory` - Get inventory status
-   - `GET /api/reports` - Get distribution reports
-   - `POST /api/upload` - File upload
-
-3. **Authentication**
-   - Implement JWT token-based authentication
-   - Include `Authorization: Bearer <token>` header in requests
-   - Handle token expiration and refresh
-
-### Customization
-
-#### Theme Colors
-```javascript
-// In tailwind.config.js
-module.exports = {
-  theme: {
-    extend: {
-      colors: {
-        primary: '#007BFF',    // Change primary color
-        success: '#28A745',    // Change success color
-        error: '#DC3545',      // Change error color
-      }
-    }
-  }
-}
-```
-
-#### Inventory Settings
-```javascript
-// In src/contexts/InventoryContext.js
-const [inventory, setInventory] = useState({
-  totalBooks: 300000,  // Change total book count
-  distributed: 0,
-  remaining: 300000
-});
-```
-
-## Testing
-
-### Run Tests
-```bash
-npm test
-```
-
-### Test Coverage
-```bash
-npm test -- --coverage
-```
-
-### Test Files
-- `src/tests/Login.test.js` - Login component tests
-- `src/tests/SchoolSubmission.test.js` - School submission tests
-- `src/tests/ParentCollection.test.js` - Parent collection tests
-
-## Building for Production
-
-### Create Production Build
-```bash
-npm run build
-```
-
-### Serve Production Build
-```bash
-npx serve -s build
-```
+- **Admin**: `admin1` / `password`
+- **Staff**: `staff1` / `password`
+- **School**: `school1` / `password`
 
 ## Project Structure
 
 ```
-freebooks-sekondi/
-├── public/
-│   └── index.html              # HTML template with Roboto font
-├── src/
-│   ├── components/             # React components
-│   │   ├── Navbar.js          # Navigation component
-│   │   ├── Login.js           # Login form
-│   │   ├── Dashboard.js       # Dashboard with statistics
-│   │   ├── SchoolSubmission.js # School submission form
-│   │   ├── AdminApproval.js   # Admin approval interface
-│   │   ├── ParentCollection.js # Parent collection interface
-│   │   ├── Reports.js         # Reports and analytics
-│   │   ├── AutocompleteSearch.js # Search component
-│   │   ├── FileUpload.js      # File upload component
-│   │   ├── PieChart.js        # Chart component
-│   │   └── QRCodeGenerator.js # QR code component
-│   ├── contexts/              # React Context providers
-│   │   ├── AuthContext.js     # Authentication context
-│   │   └── InventoryContext.js # Inventory management context
-│   ├── services/              # API services
-│   │   └── api.js            # Axios configuration and API calls
-│   ├── tests/                # Test files
-│   │   ├── Login.test.js
-│   │   ├── SchoolSubmission.test.js
-│   │   └── ParentCollection.test.js
-│   ├── mocks.js              # Mock data for demo
-│   ├── App.js                # Main app component with routing
-│   ├── index.js              # App entry point
-│   ├── index.css             # Global styles and Tailwind imports
-│   └── tailwind.config.js    # Tailwind configuration
-├── package.json              # Dependencies and scripts
-└── README.md                 # This file
+src/
+├── components/
+│   ├── common/           # Reusable UI components
+│   │   ├── Button.jsx
+│   │   ├── Input.jsx
+│   │   ├── Textarea.jsx
+│   │   ├── Table.jsx
+│   │   ├── Modal.jsx
+│   │   ├── Toast.jsx
+│   │   └── SkeletonWrapper.jsx
+│   ├── Login.jsx
+│   ├── Signup.jsx
+│   ├── Dashboard.jsx
+│   ├── UserManagement.jsx
+│   ├── BookRecords.jsx
+│   ├── SchoolSubmission.jsx
+│   ├── AdminApproval.jsx
+│   ├── DeliveryEntry.jsx
+│   ├── ParentCollection.jsx
+│   ├── Reports.jsx
+│   ├── Details.jsx
+│   └── Navbar.jsx
+├── contexts/
+│   ├── AuthContext.jsx   # Authentication state
+│   └── InventoryContext.jsx # Inventory management
+├── services/
+│   └── api.jsx          # API service layer
+├── utils/
+│   ├── validateSchoolSubmission.jsx
+│   ├── fuseSearch.jsx
+│   └── parseCSV.jsx
+├── mocks.jsx            # Mock data
+├── tests/               # Test files
+├── App.jsx
+└── index.jsx
 ```
+
+## Key Features
+
+### Role-Based Access Control
+- Different dashboards and features based on user role
+- Protected routes with automatic redirection
+- Role-specific navigation menus
+
+### Responsive Design
+- Mobile-first approach with Tailwind CSS
+- Responsive breakpoints (`md:`, `lg:`)
+- Touch-friendly interface
+
+### Accessibility
+- ARIA attributes for screen readers
+- Keyboard navigation support
+- Focus management and focus traps
+- Semantic HTML structure
+
+### Data Management
+- CSV file upload and parsing
+- PDF export with autoTable
+- Real-time search with Fuse.js
+- Form validation with error handling
+
+### Loading States
+- Skeleton loaders for better UX
+- 2-second delay simulation for demo purposes
+- Loading spinners for async operations
+
+## API Endpoints
+
+The application expects the following API endpoints:
+
+### Authentication
+- `POST /api/auth/login` - User login
+- `POST /api/auth/signup` - School registration
+- `POST /api/auth/change-password` - Password change
+
+### Inventory
+- `GET /api/inventory` - Get inventory data
+- `POST /api/inventory/add-yearly` - Add yearly book records
+
+### Schools
+- `GET /api/schools` - Get schools list
+- `POST /api/schools/submit` - Submit school data
+- `POST /api/schools/:id/approve` - Approve school
+- `POST /api/schools/:id/deliver` - Mark as delivered
+
+### Students
+- `POST /api/students/search` - Search student
+- `POST /api/students/:id/collect` - Collect books
+
+### Deliveries
+- `POST /api/deliveries/create` - Create delivery record
+
+### Reports
+- `GET /api/reports` - Get distribution reports
+
+### Users
+- `GET /api/users` - Get users list
+- `POST /api/users/create` - Create user
+- `DELETE /api/users/remove/:id` - Remove user
+
+### Logs
+- `GET /api/logs` - Get activity logs
+
+## Testing
+
+Run the test suite:
+
+```bash
+npm test
+```
+
+The application includes comprehensive tests for:
+- Login and authentication
+- School submission forms
+- Parent collection process
+- Dashboard functionality
+- User management
+
+## Building for Production
+
+```bash
+npm run build
+```
+
+This creates an optimized production build in the `build` folder.
+
+## Browser Support
+
+- Chrome (latest)
+- Firefox (latest)
+- Safari (latest)
+- Edge (latest)
 
 ## Contributing
 
 1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+2. Create a feature branch
+3. Make your changes
+4. Add tests for new functionality
+5. Submit a pull request
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+This project is licensed under the MIT License.
 
 ## Support
 
-For support and questions:
-- Create an issue in the repository
-- Contact the development team
-- Check the documentation
-
-## Acknowledgments
-
-- React team for the amazing framework
-- Tailwind CSS for the utility-first CSS framework
-- All the open-source libraries that made this project possible
-- The Sekondi community for their support
+For support and questions, please contact the development team or create an issue in the repository.
 
 ---
 
-**FreeBooks Sekondi** - Empowering Education Through Technology 📚✨
+**FreeBooks Sekondi** - Ensuring transparency and accessibility in book distribution for all schools and students in Sekondi.
