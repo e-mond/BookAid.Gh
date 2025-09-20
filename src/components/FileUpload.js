@@ -29,9 +29,11 @@ const FileUpload = ({
     }
 
     setUploading(true);
-    
+
+    let newFiles = []; // <-- Declare here
+
     try {
-      const newFiles = acceptedFiles.map(file => ({
+      newFiles = acceptedFiles.map(file => ({
         file,
         id: Date.now() + Math.random(),
         name: file.name,

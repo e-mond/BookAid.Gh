@@ -10,7 +10,7 @@ import {
   ClipboardDocumentListIcon,
   HomeIcon
 } from '@heroicons/react/24/outline';
-import { Popover, Transition } from '@headlessui/react';
+import { Transition } from '@headlessui/react';
 
 /**
  * Navbar component with responsive design and role-based navigation
@@ -76,9 +76,7 @@ const Navbar = () => {
   const navigationItems = getNavigationItems();
 
   // Check if current path is active
-  const isActive = (href) => {
-    return location.pathname === href;
-  };
+  const isActive = (href) => location.pathname === href;
 
   return (
     <nav className="bg-blue-600 shadow-lg fixed w-full top-0 z-50">
@@ -88,9 +86,7 @@ const Navbar = () => {
           <div className="flex items-center">
             <Link to="/dashboard" className="flex items-center space-x-2">
               <BookOpenIcon className="h-8 w-8 text-white" />
-              <span className="text-white text-xl font-bold">
-                FreeBooks Sekondi
-              </span>
+              <span className="text-white text-xl font-bold">FreeBooks Sekondi</span>
             </Link>
           </div>
 
@@ -118,18 +114,13 @@ const Navbar = () => {
 
           {/* User Menu */}
           <div className="hidden md:flex items-center space-x-4">
-            {/* User Info */}
             <div className="flex items-center space-x-2 text-blue-100">
               <UserIcon className="h-5 w-5" />
-              <span className="text-sm">
-                {user?.name} ({user?.role})
-              </span>
+              <span className="text-sm">{user?.name} ({user?.role})</span>
             </div>
-
-            {/* Logout Button */}
             <button
               onClick={handleLogout}
-              className="bg-blue-700 hover:bg-blue-800 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-300 focus:ring-offset-2 focus:ring-offset-blue-600"
+              className="btn-primary px-4 py-2 text-sm"
               aria-label="Logout"
             >
               Logout
@@ -157,15 +148,15 @@ const Navbar = () => {
       {/* Mobile Navigation Menu */}
       <Transition
         show={mobileMenuOpen}
-        enter="transition ease-out duration-100"
+        enter="transition ease-out duration-200"
         enterFrom="transform opacity-0 scale-95"
         enterTo="transform opacity-100 scale-100"
-        leave="transition ease-in duration-75"
+        leave="transition ease-in duration-150"
         leaveFrom="transform opacity-100 scale-100"
         leaveTo="transform opacity-0 scale-95"
       >
         <div className="md:hidden">
-          <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3 bg-blue-800">
+          <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3 bg-blue-600 shadow-lg">
             {navigationItems.map((item) => {
               const Icon = item.icon;
               return (
@@ -185,14 +176,12 @@ const Navbar = () => {
                 </Link>
               );
             })}
-            
+
             {/* Mobile User Info */}
-            <div className="border-t border-blue-700 pt-4 mt-4">
+            <div className="border-t border-blue-500 pt-4 mt-4">
               <div className="flex items-center space-x-2 px-3 py-2 text-blue-100">
                 <UserIcon className="h-5 w-5" />
-                <span className="text-sm">
-                  {user?.name} ({user?.role})
-                </span>
+                <span className="text-sm">{user?.name} ({user?.role})</span>
               </div>
               <button
                 onClick={handleLogout}

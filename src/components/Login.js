@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useToastContext } from '../contexts/ToastContext';
 import { BookOpenIcon } from '@heroicons/react/24/outline';
 
 /**
@@ -17,6 +18,7 @@ const Login = () => {
   const [error, setError] = useState('');
 
   const { login } = useAuth();
+  const { showSuccess, showError } = useToastContext();
   const navigate = useNavigate();
 
   // Handle form input changes
@@ -26,7 +28,6 @@ const Login = () => {
       ...prev,
       [name]: value
     }));
-    // Clear error when user starts typing
     if (error) setError('');
   };
 
@@ -40,13 +41,15 @@ const Login = () => {
       const result = await login(formData.username, formData.password, formData.role);
       
       if (result.success) {
-        // Redirect based on role
+        showSuccess('Login Successful', `Welcome back, ${formData.username}!`);
         navigate('/dashboard');
       } else {
         setError('Login failed. Please check your credentials.');
+        showError('Login Failed', 'Please check your credentials and try again.');
       }
     } catch (err) {
       setError('An error occurred during login. Please try again.');
+      showError('Login Error', 'An unexpected error occurred. Please try again.');
       console.error('Login error:', err);
     } finally {
       setLoading(false);
@@ -55,7 +58,7 @@ const Login = () => {
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
+      <div className="max-w-md w-full space-y-8" role="main" aria-label="Login form">
         {/* Header */}
         <div className="text-center">
           <div className="flex justify-center">
@@ -70,19 +73,15 @@ const Login = () => {
         </div>
 
         {/* Login Form */}
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          <div className="bg-white rounded-lg shadow-md p-8 space-y-6">
+        <form className="mt-8 space-y-6" onSubmit={handleSubmit} aria-label="Login form">
+          <div className="card p-8 space-y-6 animate-fade-in">
             {/* Error Message */}
             {error && (
-              <div className="bg-red-50 border border-red-200 rounded-md p-4">
+              <div className="bg-error-50 border border-error-200 rounded-lg p-4 animate-slide-up">
                 <div className="flex">
                   <div className="ml-3">
-                    <h3 className="text-sm font-medium text-red-800">
-                      Login Error
-                    </h3>
-                    <div className="mt-2 text-sm text-red-700">
-                      {error}
-                    </div>
+                    <h3 className="text-sm font-medium text-error-800">Login Error</h3>
+                    <div className="mt-2 text-sm text-error-700">{error}</div>
                   </div>
                 </div>
               </div>
@@ -90,9 +89,7 @@ const Login = () => {
 
             {/* Username Input */}
             <div>
-              <label htmlFor="username" className="block text-sm font-medium text-gray-700">
-                Username
-              </label>
+              <label htmlFor="username" className="form-label">Username</label>
               <input
                 id="username"
                 name="username"
@@ -100,7 +97,7 @@ const Login = () => {
                 required
                 value={formData.username}
                 onChange={handleChange}
-                className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent focus-ring-primary"
+                className="form-input"
                 placeholder="Enter your username"
                 aria-label="Username input"
                 disabled={loading}
@@ -109,9 +106,7 @@ const Login = () => {
 
             {/* Password Input */}
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                Password
-              </label>
+              <label htmlFor="password" className="form-label">Password</label>
               <input
                 id="password"
                 name="password"
@@ -119,7 +114,7 @@ const Login = () => {
                 required
                 value={formData.password}
                 onChange={handleChange}
-                className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent focus-ring-primary"
+                className="form-input"
                 placeholder="Enter your password"
                 aria-label="Password input"
                 disabled={loading}
@@ -128,15 +123,13 @@ const Login = () => {
 
             {/* Role Selection */}
             <div>
-              <label htmlFor="role" className="block text-sm font-medium text-gray-700">
-                Role
-              </label>
+              <label htmlFor="role" className="form-label">Role</label>
               <select
                 id="role"
                 name="role"
                 value={formData.role}
                 onChange={handleChange}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent focus-ring-primary"
+                className="form-input"
                 disabled={loading}
                 aria-label="Select your role"
               >
@@ -151,10 +144,10 @@ const Login = () => {
               <button
                 type="submit"
                 disabled={loading}
-                className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 focus-ring-primary disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="btn-primary w-full"
               >
                 {loading ? (
-                  <div className="flex items-center">
+                  <div className="flex items-center justify-center">
                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
                     Logging in...
                   </div>
@@ -167,30 +160,12 @@ const Login = () => {
         </form>
 
         {/* Demo Credentials */}
-        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-6 shadow-sm">
-          <div className="flex items-center mb-3">
-            <div className="flex-shrink-0">
-              <svg className="h-5 w-5 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-              </svg>
-            </div>
-            <h3 className="ml-2 text-sm font-semibold text-blue-800">
-              Demo Credentials
-            </h3>
-          </div>
-          <div className="text-sm text-blue-700 space-y-2">
-            <div className="flex items-center justify-between bg-white rounded-md p-2 border border-blue-100">
-              <span className="font-medium text-blue-800">School:</span>
-              <span className="font-mono text-xs">school1 / password123</span>
-            </div>
-            <div className="flex items-center justify-between bg-white rounded-md p-2 border border-blue-100">
-              <span className="font-medium text-blue-800">Admin:</span>
-              <span className="font-mono text-xs">admin1 / password123</span>
-            </div>
-            <div className="flex items-center justify-between bg-white rounded-md p-2 border border-blue-100">
-              <span className="font-medium text-blue-800">Staff:</span>
-              <span className="font-mono text-xs">staff1 / password123</span>
-            </div>
+        <div className="bg-primary-50 border border-primary-200 rounded-lg p-4 animate-fade-in">
+          <h3 className="text-sm font-medium text-primary-800 mb-2">Demo Credentials</h3>
+          <div className="text-xs text-primary-700 space-y-1">
+            <p><strong>School:</strong> school1 / password123</p>
+            <p><strong>Admin:</strong> admin1 / password123</p>
+            <p><strong>Staff:</strong> staff1 / password123</p>
           </div>
         </div>
       </div>

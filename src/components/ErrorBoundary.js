@@ -23,6 +23,7 @@ class ErrorBoundary extends React.Component {
       error: error,
       errorInfo: errorInfo
     });
+    // Optionally: logErrorToService(error, errorInfo);
   }
 
   handleRetry = () => {
@@ -44,7 +45,7 @@ class ErrorBoundary extends React.Component {
               <p className="text-gray-600 mb-8">
                 We're sorry, but something unexpected happened. Please try again.
               </p>
-              
+
               <div className="space-y-4">
                 <button
                   onClick={this.handleRetry}
@@ -52,7 +53,7 @@ class ErrorBoundary extends React.Component {
                 >
                   Try Again
                 </button>
-                
+
                 <button
                   onClick={() => window.location.reload()}
                   className="w-full flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
@@ -68,7 +69,7 @@ class ErrorBoundary extends React.Component {
                   </summary>
                   <pre className="mt-2 text-xs text-red-600 bg-red-50 p-4 rounded-md overflow-auto">
                     {this.state.error && this.state.error.toString()}
-                    {this.state.errorInfo.componentStack}
+                    {this.state.errorInfo?.componentStack}
                   </pre>
                 </details>
               )}
@@ -81,5 +82,38 @@ class ErrorBoundary extends React.Component {
     return this.props.children;
   }
 }
+
+/**
+ * Hook-based error handler for functional components
+ */
+export const useErrorHandler = () => {
+  const [error, setError] = React.useState(null);
+
+  const resetError = () => setError(null);
+
+  const handleError = React.useCallback((err) => {
+    console.error('Error caught by useErrorHandler:', err);
+    setError(err);
+  }, []);
+
+  React.useEffect(() => {
+    if (error) throw error;
+  }, [error]);
+
+  return { handleError, resetError };
+};
+
+/**
+ * Higher-order component to wrap components with error boundary
+ */
+export const withErrorBoundary = (Component, fallback = null) => {
+  return function WrappedComponent(props) {
+    return (
+      <ErrorBoundary fallback={fallback}>
+        <Component {...props} />
+      </ErrorBoundary>
+    );
+  };
+};
 
 export default ErrorBoundary;

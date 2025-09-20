@@ -1,8 +1,10 @@
 import React, { Suspense } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, Link } from 'react-router-dom';
+import LoadingSpinner from './components/LoadingSpinner';
+import ErrorBoundary from './components/ErrorBoundary';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { InventoryProvider } from './contexts/InventoryContext';
-import ErrorBoundary from './components/ErrorBoundary';
+import { ToastProvider } from './contexts/ToastContext';
 import Navbar from './components/Navbar';
 import Login from './components/Login';
 import Dashboard from './components/Dashboard';
@@ -21,11 +23,7 @@ const ProtectedRoute = ({ children, allowedRoles = [] }) => {
   const { isAuthenticated, user, loading } = useAuth();
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-      </div>
-    );
+    return <LoadingSpinner fullScreen text="Loading..." />;
   }
 
   if (!isAuthenticated) {
@@ -46,11 +44,7 @@ const PublicRoute = ({ children }) => {
   const { isAuthenticated, loading } = useAuth();
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-      </div>
-    );
+    return <LoadingSpinner fullScreen text="Loading..." />;
   }
 
   if (isAuthenticated) {
@@ -122,11 +116,7 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute allowedRoles={['admin', 'staff']}>
             <Navbar />
-            <Suspense fallback={
-              <div className="pt-16 min-h-screen bg-background flex items-center justify-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-              </div>
-            }>
+            <Suspense fallback={<LoadingSpinner fullScreen text="Loading Reports..." />}>
               <LazyReports />
             </Suspense>
           </ProtectedRoute>
@@ -146,12 +136,12 @@ const AppRoutes = () => {
               <div className="text-center">
                 <h1 className="text-4xl font-bold text-gray-900 mb-4">404</h1>
                 <p className="text-gray-600 mb-8">Page not found</p>
-                <a 
-                  href="/dashboard" 
-                  className="bg-primary text-white px-6 py-3 rounded-md hover:bg-blue-700 transition-colors"
+                <Link 
+                  to="/dashboard" 
+                  className="bg-primary text-white px-6 py-3 rounded-md hover:bg-primary-700 transition-colors inline-block"
                 >
                   Return to Dashboard
-                </a>
+                </Link>
               </div>
             </div>
           </ProtectedRoute>
@@ -167,15 +157,17 @@ const AppRoutes = () => {
 const App = () => {
   return (
     <ErrorBoundary>
-      <AuthProvider>
-        <InventoryProvider>
-          <Router>
-            <div className="App">
-              <AppRoutes />
-            </div>
-          </Router>
-        </InventoryProvider>
-      </AuthProvider>
+      <ToastProvider>
+        <AuthProvider>
+          <InventoryProvider>
+            <Router>
+              <div className="App">
+                <AppRoutes />
+              </div>
+            </Router>
+          </InventoryProvider>
+        </AuthProvider>
+      </ToastProvider>
     </ErrorBoundary>
   );
 };

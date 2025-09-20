@@ -1,15 +1,14 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useInventory } from '../contexts/InventoryContext';
 import { apiService } from '../services/api';
-import Skeleton from 'react-loading-skeleton';
-import 'react-loading-skeleton/dist/skeleton.css';
+import LoadingSpinner, { SkeletonLoader, CardSkeleton } from './LoadingSpinner';
 import { 
   BookOpenIcon, 
   UsersIcon, 
   CheckCircleIcon, 
-  ExclamationTriangleIcon,
-  MagnifyingGlassIcon
+  ExclamationTriangleIcon
 } from '@heroicons/react/24/outline';
 import AutocompleteSearch from './AutocompleteSearch';
 
@@ -43,7 +42,7 @@ const Dashboard = () => {
       setActivityLogs(logsData.slice(0, 10)); // Show last 10 activities
     } catch (error) {
       console.error('Error loading dashboard data:', error);
-      // Set fallback data to prevent UI breaking
+      // Fallback data
       setStats({
         schoolsApproved: 0,
         studentsCovered: 0
@@ -57,13 +56,13 @@ const Dashboard = () => {
   // Get inventory statistics
   const inventoryStats = getStats();
 
-  // Get role-specific quick actions (memoized for performance)
+  // Role-specific quick actions
   const quickActions = useMemo(() => {
     if (hasRole('school')) {
       return [
         {
           name: 'Submit Student List',
-          description: 'Submit your school\'s student list for book distribution',
+          description: "Submit your school's student list for book distribution",
           href: '/school-submission',
           icon: BookOpenIcon,
           color: 'bg-green-500 hover:bg-green-600'
@@ -98,7 +97,7 @@ const Dashboard = () => {
     return [];
   }, [hasRole]);
 
-  // Format activity log entry (memoized for performance)
+  // Format activity log entry
   const formatActivityLog = useCallback((log) => {
     const date = new Date(log.timestamp);
     return {
@@ -142,7 +141,7 @@ const Dashboard = () => {
         {/* Stats Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-8">
           {/* Remaining Books */}
-          <div className="bg-white rounded-xl shadow-lg hover:shadow-xl transition-shadow duration-300 p-6 border border-gray-100" role="region" aria-label="Remaining books">
+          <div className="card p-6 animate-slide-up" role="region" aria-label="Remaining books">
             <div className="flex items-center">
               <div className="flex-shrink-0">
                 <div className="p-3 bg-blue-100 rounded-lg">
@@ -152,7 +151,7 @@ const Dashboard = () => {
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Remaining Books</p>
                 {loading ? (
-                  <Skeleton height={32} width={100} />
+                  <SkeletonLoader lines={1} height="h-8" width="w-24" />
                 ) : (
                   <p className="text-2xl font-bold text-gray-900">
                     {inventoryStats.remaining.toLocaleString()}
@@ -163,7 +162,7 @@ const Dashboard = () => {
           </div>
 
           {/* Distributed Books */}
-          <div className="bg-white rounded-xl shadow-lg hover:shadow-xl transition-shadow duration-300 p-6 border border-gray-100" role="region" aria-label="Distributed books">
+          <div className="card p-6 animate-slide-up" role="region" aria-label="Distributed books" style={{animationDelay: '0.1s'}}>
             <div className="flex items-center">
               <div className="flex-shrink-0">
                 <div className="p-3 bg-green-100 rounded-lg">
@@ -173,7 +172,7 @@ const Dashboard = () => {
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Distributed</p>
                 {loading ? (
-                  <Skeleton height={32} width={100} />
+                  <SkeletonLoader lines={1} height="h-8" width="w-24" />
                 ) : (
                   <p className="text-2xl font-bold text-gray-900">
                     {inventoryStats.distributed.toLocaleString()}
@@ -184,7 +183,7 @@ const Dashboard = () => {
           </div>
 
           {/* Schools Approved */}
-          <div className="bg-white rounded-xl shadow-lg hover:shadow-xl transition-shadow duration-300 p-6 border border-gray-100" role="region" aria-label="Schools approved">
+          <div className="card p-6 animate-slide-up" role="region" aria-label="Schools approved" style={{animationDelay: '0.2s'}}>
             <div className="flex items-center">
               <div className="flex-shrink-0">
                 <div className="p-3 bg-purple-100 rounded-lg">
@@ -194,7 +193,7 @@ const Dashboard = () => {
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Schools Approved</p>
                 {loading ? (
-                  <Skeleton height={32} width={100} />
+                  <SkeletonLoader lines={1} height="h-8" width="w-24" />
                 ) : (
                   <p className="text-2xl font-bold text-gray-900">
                     {stats?.schoolsApproved || 0}
@@ -205,7 +204,7 @@ const Dashboard = () => {
           </div>
 
           {/* Students Covered */}
-          <div className="bg-white rounded-xl shadow-lg hover:shadow-xl transition-shadow duration-300 p-6 border border-gray-100" role="region" aria-label="Students covered">
+          <div className="card p-6 animate-slide-up" role="region" aria-label="Students covered" style={{animationDelay: '0.3s'}}>
             <div className="flex items-center">
               <div className="flex-shrink-0">
                 <div className="p-3 bg-orange-100 rounded-lg">
@@ -215,7 +214,7 @@ const Dashboard = () => {
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Students Covered</p>
                 {loading ? (
-                  <Skeleton height={32} width={100} />
+                  <SkeletonLoader lines={1} height="h-8" width="w-24" />
                 ) : (
                   <p className="text-2xl font-bold text-gray-900">
                     {stats?.studentsCovered || 0}
@@ -234,10 +233,10 @@ const Dashboard = () => {
               {quickActions.map((action, index) => {
                 const Icon = action.icon;
                 return (
-                  <a
+                  <Link
                     key={index}
-                    href={action.href}
-                    className={`${action.color} text-white rounded-xl p-6 transition-all duration-300 hover:scale-105 hover:shadow-lg transform`}
+                    to={action.href}
+                    className={`${action.color} text-white rounded-xl p-6 transition-all duration-300 hover:scale-105 hover:shadow-lg block`}
                   >
                     <div className="flex items-center">
                       <div className="p-2 bg-white bg-opacity-20 rounded-lg mr-4">
@@ -248,7 +247,7 @@ const Dashboard = () => {
                         <p className="text-sm opacity-90 mt-1">{action.description}</p>
                       </div>
                     </div>
-                  </a>
+                  </Link>
                 );
               })}
             </div>
@@ -256,14 +255,16 @@ const Dashboard = () => {
         )}
 
         {/* Recent Activity */}
-        <div className="bg-white rounded-xl shadow-lg border border-gray-100">
-          <div className="px-6 py-5 border-b border-gray-200">
+        <div className="card">
+          <div className="card-header">
             <h2 className="text-xl font-semibold text-gray-900">Recent Activity</h2>
           </div>
-          <div className="p-6">
+          <div className="card-body">
             {loading ? (
               <div className="space-y-4">
-                <Skeleton count={5} height={60} />
+                {Array.from({ length: 5 }).map((_, index) => (
+                  <CardSkeleton key={index} />
+                ))}
               </div>
             ) : (
               <div className="space-y-4">
@@ -273,28 +274,26 @@ const Dashboard = () => {
                     return (
                       <div key={log.id} className="flex items-start space-x-4 p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors duration-200">
                         <div className="flex-shrink-0">
-                          <div className="p-2 rounded-lg">
-                            {log.type === 'approval' && (
-                              <div className="p-2 bg-green-100 rounded-lg">
-                                <CheckCircleIcon className="h-5 w-5 text-green-600" />
-                              </div>
-                            )}
-                            {log.type === 'delivery' && (
-                              <div className="p-2 bg-blue-100 rounded-lg">
-                                <BookOpenIcon className="h-5 w-5 text-blue-600" />
-                              </div>
-                            )}
-                            {log.type === 'collection' && (
-                              <div className="p-2 bg-purple-100 rounded-lg">
-                                <UsersIcon className="h-5 w-5 text-purple-600" />
-                              </div>
-                            )}
-                            {log.type === 'submission' && (
-                              <div className="p-2 bg-orange-100 rounded-lg">
-                                <ExclamationTriangleIcon className="h-5 w-5 text-orange-600" />
-                              </div>
-                            )}
-                          </div>
+                          {log.type === 'approval' && (
+                            <div className="p-2 bg-green-100 rounded-lg">
+                              <CheckCircleIcon className="h-5 w-5 text-green-600" />
+                            </div>
+                          )}
+                          {log.type === 'delivery' && (
+                            <div className="p-2 bg-blue-100 rounded-lg">
+                              <BookOpenIcon className="h-5 w-5 text-blue-600" />
+                            </div>
+                          )}
+                          {log.type === 'collection' && (
+                            <div className="p-2 bg-purple-100 rounded-lg">
+                              <UsersIcon className="h-5 w-5 text-purple-600" />
+                            </div>
+                          )}
+                          {log.type === 'submission' && (
+                            <div className="p-2 bg-orange-100 rounded-lg">
+                              <ExclamationTriangleIcon className="h-5 w-5 text-orange-600" />
+                            </div>
+                          )}
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-semibold text-gray-900">
