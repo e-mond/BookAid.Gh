@@ -36,14 +36,14 @@ describe('UserManagement Component', () => {
   test('shows create user button', () => {
     renderWithProviders(<UserManagement />);
     
-    const createButton = screen.getByRole('button', { name: /create user/i });
+    const createButton = screen.getByRole('button', { name: /create new user/i });
     expect(createButton).toBeInTheDocument();
   });
 
   test('opens create user modal', () => {
     renderWithProviders(<UserManagement />);
     
-    const createButton = screen.getByRole('button', { name: /create user/i });
+    const createButton = screen.getByRole('button', { name: /create new user/i });
     fireEvent.click(createButton);
     
     expect(screen.getByText(/create new user/i)).toBeInTheDocument();
@@ -52,7 +52,7 @@ describe('UserManagement Component', () => {
   test('validates create user form', async () => {
     renderWithProviders(<UserManagement />);
     
-    const createButton = screen.getByRole('button', { name: /create user/i });
+    const createButton = screen.getByRole('button', { name: /create new user/i });
     fireEvent.click(createButton);
     
     const submitButton = screen.getByRole('button', { name: /create user/i });
@@ -68,7 +68,7 @@ describe('UserManagement Component', () => {
   test('validates email format in create user form', async () => {
     renderWithProviders(<UserManagement />);
     
-    const createButton = screen.getByRole('button', { name: /create user/i });
+    const createButton = screen.getByRole('button', { name: /create new user/i });
     fireEvent.click(createButton);
     
     const emailInput = screen.getByLabelText(/email/i);
@@ -85,7 +85,7 @@ describe('UserManagement Component', () => {
   test('shows role options in create user form', () => {
     renderWithProviders(<UserManagement />);
     
-    const createButton = screen.getByRole('button', { name: /create user/i });
+    const createButton = screen.getByRole('button', { name: /create new user/i });
     fireEvent.click(createButton);
     
     const roleSelect = screen.getByRole('combobox');
@@ -100,7 +100,7 @@ describe('UserManagement Component', () => {
   test('shows school ID field for school role', () => {
     renderWithProviders(<UserManagement />);
     
-    const createButton = screen.getByRole('button', { name: /create user/i });
+    const createButton = screen.getByRole('button', { name: /create new user/i });
     fireEvent.click(createButton);
     
     const roleSelect = screen.getByRole('combobox');
@@ -112,7 +112,7 @@ describe('UserManagement Component', () => {
   test('has cancel button in create user modal', () => {
     renderWithProviders(<UserManagement />);
     
-    const createButton = screen.getByRole('button', { name: /create user/i });
+    const createButton = screen.getByRole('button', { name: /create new user/i });
     fireEvent.click(createButton);
     
     const cancelButton = screen.getByRole('button', { name: /cancel/i });
