@@ -1,7 +1,7 @@
 {
   "name": "freebooks-sekondi",
   "version": "1.0.0",
-  "description": "FreeBooks Sekondi - Exercise Book Distribution Management System",
+  "description": "FreeBooks Sekondi - React frontend for tracking yearly distribution of 300,000 free exercise books",
   "private": true,
   "dependencies": {
     "react": "^18.2.0",
@@ -16,16 +16,18 @@
     "chart.js": "^4.2.0",
     "react-csv": "^2.2.0",
     "jspdf": "^2.5.0",
+    "jspdf-autotable": "^3.5.0",
     "qrcode.react": "^3.1.0",
     "react-loading-skeleton": "^3.1.0",
     "@headlessui/react": "^1.7.0",
     "@heroicons/react": "^2.0.0"
   },
   "devDependencies": {
-    "@testing-library/jest-dom": "^5.16.0",
     "@testing-library/react": "^13.4.0",
+    "@testing-library/jest-dom": "^5.16.0",
     "@testing-library/user-event": "^14.4.0",
-    "jest": "^27.5.0",
+    "jest": "^29.4.0",
+    "jest-environment-jsdom": "^29.4.0",
     "react-scripts": "5.0.1"
   },
   "scripts": {
