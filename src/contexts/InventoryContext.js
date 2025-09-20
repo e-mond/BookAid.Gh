@@ -3,7 +3,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 // Create the InventoryContext
 const InventoryContext = createContext();
 
-// Custom hook to use InventoryContext
+// Custom hook to use the InventoryContext
 export const useInventory = () => {
   const context = useContext(InventoryContext);
   if (!context) {
@@ -12,7 +12,7 @@ export const useInventory = () => {
   return context;
 };
 
-// InventoryProvider component to manage book distribution state
+// InventoryProvider component to wrap the app
 export const InventoryProvider = ({ children }) => {
   const [inventory, setInventory] = useState({
     totalBooks: 300000,
@@ -21,56 +21,59 @@ export const InventoryProvider = ({ children }) => {
   });
   const [loading, setLoading] = useState(true);
 
-  // Initialize inventory state from localStorage or default values
+  // Load inventory data on app start
   useEffect(() => {
-    const storedInventory = localStorage.getItem('freebooks_inventory');
-    
-    if (storedInventory) {
-      try {
-        const parsedInventory = JSON.parse(storedInventory);
-        setInventory(parsedInventory);
-      } catch (error) {
-        console.error('Error parsing stored inventory data:', error);
-        // Use default values if parsing fails
-        const defaultInventory = {
-          totalBooks: 300000,
-          distributed: 0,
-          remaining: 300000
-        };
-        setInventory(defaultInventory);
-        localStorage.setItem('freebooks_inventory', JSON.stringify(defaultInventory));
-      }
-    }
-    setLoading(false);
+    loadInventory();
   }, []);
 
-  // Save inventory to localStorage whenever it changes
-  useEffect(() => {
-    if (!loading) {
-      localStorage.setItem('freebooks_inventory', JSON.stringify(inventory));
-    }
-  }, [inventory, loading]);
+  // Load inventory from API or localStorage
+  const loadInventory = async () => {
+    try {
+      // Try to fetch from API first
+      const response = await fetch('/api/inventory', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('freebooks_token')}`
+        }
+      });
 
-  // Update inventory - deduct books atomically
+      if (response.ok) {
+        const data = await response.json();
+        setInventory(data);
+      } else {
+        // Fallback to localStorage or default values
+        const storedInventory = localStorage.getItem('freebooks_inventory');
+        if (storedInventory) {
+          setInventory(JSON.parse(storedInventory));
+        }
+      }
+    } catch (error) {
+      // Fallback to localStorage or default values
+      const storedInventory = localStorage.getItem('freebooks_inventory');
+      if (storedInventory) {
+        setInventory(JSON.parse(storedInventory));
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Update inventory (atomic operation)
   const updateInventory = (booksToDistribute) => {
     setInventory(prevInventory => {
-      const newDistributed = prevInventory.distributed + booksToDistribute;
-      const newRemaining = prevInventory.totalBooks - newDistributed;
-      
-      // Prevent negative remaining books
-      if (newRemaining < 0) {
-        throw new Error('Insufficient books remaining');
-      }
-      
-      return {
+      const newInventory = {
         ...prevInventory,
-        distributed: newDistributed,
-        remaining: newRemaining
+        distributed: prevInventory.distributed + booksToDistribute,
+        remaining: prevInventory.remaining - booksToDistribute
       };
+      
+      // Persist to localStorage
+      localStorage.setItem('freebooks_inventory', JSON.stringify(newInventory));
+      
+      return newInventory;
     });
   };
 
-  // Reset inventory to default values (admin function)
+  // Reset inventory (for testing purposes)
   const resetInventory = () => {
     const defaultInventory = {
       totalBooks: 300000,
@@ -78,23 +81,24 @@ export const InventoryProvider = ({ children }) => {
       remaining: 300000
     };
     setInventory(defaultInventory);
+    localStorage.setItem('freebooks_inventory', JSON.stringify(defaultInventory));
   };
 
   // Get inventory statistics
   const getStats = () => {
-    const distributionPercentage = (inventory.distributed / inventory.totalBooks) * 100;
-    const studentsServed = Math.floor(inventory.distributed / 20); // 20 books per student
+    const percentageDistributed = (inventory.distributed / inventory.totalBooks) * 100;
+    const percentageRemaining = (inventory.remaining / inventory.totalBooks) * 100;
     
     return {
-      distributionPercentage: Math.round(distributionPercentage * 100) / 100,
-      studentsServed,
-      booksPerStudent: 20
+      ...inventory,
+      percentageDistributed: Math.round(percentageDistributed * 100) / 100,
+      percentageRemaining: Math.round(percentageRemaining * 100) / 100
     };
   };
 
-  // Check if sufficient books are available
-  const canDistribute = (booksNeeded) => {
-    return inventory.remaining >= booksNeeded;
+  // Check if there are enough books available
+  const hasEnoughBooks = (requiredBooks) => {
+    return inventory.remaining >= requiredBooks;
   };
 
   const value = {
@@ -103,7 +107,8 @@ export const InventoryProvider = ({ children }) => {
     updateInventory,
     resetInventory,
     getStats,
-    canDistribute
+    hasEnoughBooks,
+    loadInventory
   };
 
   return (

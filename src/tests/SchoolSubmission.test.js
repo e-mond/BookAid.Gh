@@ -1,251 +1,225 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import { BrowserRouter } from 'react-router-dom';
-import SchoolSubmission from '../components/SchoolSubmission';
 import { AuthProvider } from '../contexts/AuthContext';
-import { schoolService } from '../services/api';
+import { InventoryProvider } from '../contexts/InventoryContext';
+import SchoolSubmission from '../components/SchoolSubmission';
 
-// Mock the API service
-jest.mock('../services/api', () => ({
-  schoolService: {
-    submitSchool: jest.fn()
-  }
-}));
-
-// Mock react-router-dom
+// Mock the useNavigate hook
 const mockNavigate = jest.fn();
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
-  useNavigate: () => mockNavigate
+  useNavigate: () => mockNavigate,
 }));
 
-// Mock react-dropzone
-jest.mock('react-dropzone', () => ({
-  useDropzone: ({ onDrop }) => ({
-    getRootProps: () => ({
-      onClick: () => {},
-      onDrop: () => {}
-    }),
-    getInputProps: () => ({}),
-    isDragActive: false
-  })
+// Mock the API service
+jest.mock('../services/api', () => ({
+  apiService: {
+    submitSchool: jest.fn().mockResolvedValue({ success: true, schoolId: 'test-123' })
+  }
 }));
 
-// Helper function to render SchoolSubmission with providers
-const renderSchoolSubmission = () => {
-  const mockUser = { id: '1', role: 'school', name: 'Test School' };
-  
-  return render(
-    <BrowserRouter>
-      <AuthProvider>
-        <SchoolSubmission />
-      </AuthProvider>
-    </BrowserRouter>
-  );
-};
+// Test wrapper component
+const TestWrapper = ({ children }) => (
+  <BrowserRouter>
+    <AuthProvider>
+      <InventoryProvider>
+        {children}
+      </InventoryProvider>
+    </AuthProvider>
+  </BrowserRouter>
+);
 
 describe('SchoolSubmission Component', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    mockNavigate.mockClear();
   });
 
-  test('renders school submission form with tabs', () => {
-    renderSchoolSubmission();
+  test('renders school submission form with progress steps', () => {
+    render(
+      <TestWrapper>
+        <SchoolSubmission />
+      </TestWrapper>
+    );
+
+    // Check if progress steps are displayed
+    expect(screen.getByText(/step 1/i)).toBeInTheDocument();
+    expect(screen.getByText(/step 2/i)).toBeInTheDocument();
+    expect(screen.getByText(/step 3/i)).toBeInTheDocument();
     
-    expect(screen.getByText('Submit Student List')).toBeInTheDocument();
-    expect(screen.getByText('School Info')).toBeInTheDocument();
-    expect(screen.getByText('Classes')).toBeInTheDocument();
-    expect(screen.getByText('Students')).toBeInTheDocument();
+    // Check if step 1 content is shown
+    expect(screen.getByText(/school information/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/school name/i)).toBeInTheDocument();
   });
 
-  test('validates school name in step 1', async () => {
-    const user = userEvent.setup();
-    renderSchoolSubmission();
-    
+  test('step navigation works correctly', () => {
+    render(
+      <TestWrapper>
+        <SchoolSubmission />
+      </TestWrapper>
+    );
+
     const schoolNameInput = screen.getByLabelText(/school name/i);
-    const nextButton = screen.getByRole('button', { name: /next: classes/i });
+    const nextButton = screen.getByText(/next: classes/i);
+
+    // Fill school name
+    fireEvent.change(schoolNameInput, { target: { value: 'Test School' } });
     
-    // Initially next button should be disabled
-    expect(nextButton).toBeDisabled();
-    
-    // Enter short name (should show error)
-    await user.type(schoolNameInput, 'AB');
-    expect(screen.getByText('School name must be at least 3 characters')).toBeInTheDocument();
-    expect(nextButton).toBeDisabled();
-    
-    // Enter valid name
-    await user.clear(schoolNameInput);
-    await user.type(schoolNameInput, 'Test Primary School');
-    expect(screen.getByText('School name is valid')).toBeInTheDocument();
-    expect(nextButton).toBeEnabled();
+    // Click next button
+    fireEvent.click(nextButton);
+
+    // Check if step 2 is shown
+    expect(screen.getByText(/class information/i)).toBeInTheDocument();
+    expect(screen.getByText(/add class/i)).toBeInTheDocument();
   });
 
-  test('allows adding and removing class rows in step 2', async () => {
-    const user = userEvent.setup();
-    renderSchoolSubmission();
+  test('class management works correctly', () => {
+    render(
+      <TestWrapper>
+        <SchoolSubmission />
+      </TestWrapper>
+    );
+
+    // Navigate to step 2
+    const schoolNameInput = screen.getByLabelText(/school name/i);
+    fireEvent.change(schoolNameInput, { target: { value: 'Test School' } });
+    fireEvent.click(screen.getByText(/next: classes/i));
+
+    // Check if default class row is present
+    expect(screen.getByPlaceholderText(/class name/i)).toBeInTheDocument();
+    expect(screen.getByPlaceholderText(/count/i)).toBeInTheDocument();
+
+    // Add a new class
+    fireEvent.click(screen.getByText(/add class/i));
     
-    // Go to step 2
-    await user.type(screen.getByLabelText(/school name/i), 'Test School');
-    await user.click(screen.getByRole('button', { name: /next: classes/i }));
-    
-    // Initially should have one class row
-    expect(screen.getAllByPlaceholderText(/class name/i)).toHaveLength(1);
-    
-    // Add another class row
-    await user.click(screen.getByRole('button', { name: /add class/i }));
-    expect(screen.getAllByPlaceholderText(/class name/i)).toHaveLength(2);
-    
-    // Fill in class information
-    const classNameInputs = screen.getAllByPlaceholderText(/class name/i);
-    const countInputs = screen.getAllByPlaceholderText(/count/i);
-    
-    await user.type(classNameInputs[0], 'Class 1');
-    await user.type(countInputs[0], '25');
-    await user.type(classNameInputs[1], 'Class 2');
-    await user.type(countInputs[1], '30');
-    
-    // Check total declared
-    expect(screen.getByText('Total Declared Students: 55')).toBeInTheDocument();
+    // Should have two class rows now
+    const classInputs = screen.getAllByPlaceholderText(/class name/i);
+    expect(classInputs).toHaveLength(2);
   });
 
-  test('validates class information', async () => {
-    const user = userEvent.setup();
-    renderSchoolSubmission();
-    
-    // Go to step 2
-    await user.type(screen.getByLabelText(/school name/i), 'Test School');
-    await user.click(screen.getByRole('button', { name: /next: classes/i }));
-    
-    // Try to proceed without filling class info
-    const nextButton = screen.getByRole('button', { name: /next: students/i });
-    expect(nextButton).toBeDisabled();
-    
-    // Fill in invalid class info (duplicate names)
-    await user.click(screen.getByRole('button', { name: /add class/i }));
-    
-    const classNameInputs = screen.getAllByPlaceholderText(/class name/i);
-    await user.type(classNameInputs[0], 'Class 1');
-    await user.type(classNameInputs[1], 'Class 1'); // Duplicate
-    
-    expect(screen.getByText('Duplicate class names are not allowed')).toBeInTheDocument();
+  test('class validation works correctly', () => {
+    render(
+      <TestWrapper>
+        <SchoolSubmission />
+      </TestWrapper>
+    );
+
+    // Navigate to step 2
+    const schoolNameInput = screen.getByLabelText(/school name/i);
+    fireEvent.change(schoolNameInput, { target: { value: 'Test School' } });
+    fireEvent.click(screen.getByText(/next: classes/i));
+
+    // Try to proceed without filling class information
+    const nextButton = screen.getByText(/next: students/i);
     expect(nextButton).toBeDisabled();
   });
 
-  test('validates student count matches declared total', async () => {
-    const user = userEvent.setup();
-    renderSchoolSubmission();
-    
-    // Complete steps 1 and 2
-    await user.type(screen.getByLabelText(/school name/i), 'Test School');
-    await user.click(screen.getByRole('button', { name: /next: classes/i }));
-    
+  test('total calculation works correctly', () => {
+    render(
+      <TestWrapper>
+        <SchoolSubmission />
+      </TestWrapper>
+    );
+
+    // Navigate to step 2
+    const schoolNameInput = screen.getByLabelText(/school name/i);
+    fireEvent.change(schoolNameInput, { target: { value: 'Test School' } });
+    fireEvent.click(screen.getByText(/next: classes/i));
+
+    // Fill class information
     const classNameInput = screen.getByPlaceholderText(/class name/i);
     const countInput = screen.getByPlaceholderText(/count/i);
     
-    await user.type(classNameInput, 'Class 1');
-    await user.type(countInput, '25');
-    await user.click(screen.getByRole('button', { name: /next: students/i }));
-    
-    // Should show validation error for mismatched count
-    expect(screen.getByText(/Student count \(0\) must match total declared \(25\)/)).toBeInTheDocument();
-    
-    // Add students manually
-    for (let i = 0; i < 25; i++) {
-      await user.click(screen.getByRole('button', { name: /add student/i }));
-    }
-    
-    // Should now show match
-    expect(screen.getByText('Student count matches declared total')).toBeInTheDocument();
+    fireEvent.change(classNameInput, { target: { value: 'Class 5' } });
+    fireEvent.change(countInput, { target: { value: '25' } });
+
+    // Check if total is calculated correctly
+    expect(screen.getByText(/total students declared: 25/i)).toBeInTheDocument();
+    expect(screen.getByText(/total books required: 500/i)).toBeInTheDocument();
   });
 
-  test('submits form successfully', async () => {
-    const user = userEvent.setup();
-    const mockResponse = { success: true, school: { id: '1', name: 'Test School' } };
-    schoolService.submitSchool.mockResolvedValue(mockResponse);
-    
-    renderSchoolSubmission();
-    
-    // Complete step 1
-    await user.type(screen.getByLabelText(/school name/i), 'Test School');
-    await user.click(screen.getByRole('button', { name: /next: classes/i }));
-    
-    // Complete step 2
+  test('student list validation works correctly', async () => {
+    render(
+      <TestWrapper>
+        <SchoolSubmission />
+      </TestWrapper>
+    );
+
+    // Navigate through steps
+    const schoolNameInput = screen.getByLabelText(/school name/i);
+    fireEvent.change(schoolNameInput, { target: { value: 'Test School' } });
+    fireEvent.click(screen.getByText(/next: classes/i));
+
+    // Fill class information
     const classNameInput = screen.getByPlaceholderText(/class name/i);
     const countInput = screen.getByPlaceholderText(/count/i);
-    
-    await user.type(classNameInput, 'Class 1');
-    await user.type(countInput, '2');
-    await user.click(screen.getByRole('button', { name: /next: students/i }));
-    
-    // Complete step 3 - add 2 students
-    await user.click(screen.getByRole('button', { name: /add student/i }));
-    await user.click(screen.getByRole('button', { name: /add student/i }));
-    
+    fireEvent.change(classNameInput, { target: { value: 'Class 5' } });
+    fireEvent.change(countInput, { target: { value: '2' } });
+    fireEvent.click(screen.getByText(/next: students/i));
+
+    // Check if step 3 is shown
+    expect(screen.getByText(/student information/i)).toBeInTheDocument();
+    expect(screen.getByText(/add student/i)).toBeInTheDocument();
+
+    // Add students
+    fireEvent.click(screen.getByText(/add student/i));
+    fireEvent.click(screen.getByText(/add student/i));
+
     // Fill student information
-    const nameInputs = screen.getAllByPlaceholderText(/student name/i);
-    const dobInputs = screen.getAllByDisplayValue('');
+    const studentNameInputs = screen.getAllByPlaceholderText(/student name/i);
+    const dobInputs = screen.getAllByDisplayValue(''); // Date inputs
     
-    await user.type(nameInputs[0], 'John Doe');
-    await user.type(nameInputs[1], 'Jane Smith');
+    fireEvent.change(studentNameInputs[0], { target: { value: 'John Doe' } });
+    fireEvent.change(studentNameInputs[1], { target: { value: 'Jane Smith' } });
     
+    // Check validation message
+    await waitFor(() => {
+      expect(screen.getByText(/number of students \(2\) must match declared total \(2\)/i)).toBeInTheDocument();
+    });
+  });
+
+  test('form submission works correctly', async () => {
+    render(
+      <TestWrapper>
+        <SchoolSubmission />
+      </TestWrapper>
+    );
+
+    // Complete the form
+    const schoolNameInput = screen.getByLabelText(/school name/i);
+    fireEvent.change(schoolNameInput, { target: { value: 'Test School' } });
+    fireEvent.click(screen.getByText(/next: classes/i));
+
+    // Fill class information
+    const classNameInput = screen.getByPlaceholderText(/class name/i);
+    const countInput = screen.getByPlaceholderText(/count/i);
+    fireEvent.change(classNameInput, { target: { value: 'Class 5' } });
+    fireEvent.change(countInput, { target: { value: '1' } });
+    fireEvent.click(screen.getByText(/next: students/i));
+
+    // Add and fill student
+    fireEvent.click(screen.getByText(/add student/i));
+    const studentNameInput = screen.getByPlaceholderText(/student name/i);
+    fireEvent.change(studentNameInput, { target: { value: 'John Doe' } });
+
     // Submit form
-    const submitButton = screen.getByRole('button', { name: /submit list/i });
-    await user.click(submitButton);
-    
-    // Verify API call
+    const submitButton = screen.getByText(/submit list/i);
+    fireEvent.click(submitButton);
+
+    // Check if success modal appears
     await waitFor(() => {
-      expect(schoolService.submitSchool).toHaveBeenCalledWith(
-        expect.objectContaining({
-          schoolName: 'Test School',
-          totalDeclared: 2,
-          classes: [{ className: 'Class 1', declaredCount: 2 }],
-          students: expect.arrayContaining([
-            expect.objectContaining({ name: 'John Doe' }),
-            expect.objectContaining({ name: 'Jane Smith' })
-          ])
-        })
-      );
+      expect(screen.getByText(/submission successful/i)).toBeInTheDocument();
     });
   });
 
-  test('shows success modal after submission', async () => {
-    const user = userEvent.setup();
-    const mockResponse = { success: true, school: { id: '1', name: 'Test School' } };
-    schoolService.submitSchool.mockResolvedValue(mockResponse);
-    
-    renderSchoolSubmission();
-    
-    // Complete form quickly (minimal steps for testing modal)
-    await user.type(screen.getByLabelText(/school name/i), 'Test School');
-    await user.click(screen.getByRole('button', { name: /next: classes/i }));
-    
-    await user.type(screen.getByPlaceholderText(/class name/i), 'Class 1');
-    await user.type(screen.getByPlaceholderText(/count/i), '1');
-    await user.click(screen.getByRole('button', { name: /next: students/i }));
-    
-    await user.click(screen.getByRole('button', { name: /add student/i }));
-    await user.type(screen.getByPlaceholderText(/student name/i), 'John Doe');
-    
-    await user.click(screen.getByRole('button', { name: /submit list/i }));
-    
-    // Check for success modal
-    await waitFor(() => {
-      expect(screen.getByText('Submission Successful!')).toBeInTheDocument();
-      expect(screen.getByText('Your student list has been submitted for review.')).toBeInTheDocument();
-    });
-  });
+  test('accessibility features work correctly', () => {
+    render(
+      <TestWrapper>
+        <SchoolSubmission />
+      </TestWrapper>
+    );
 
-  test('has proper accessibility attributes', () => {
-    renderSchoolSubmission();
-    
-    // Check tab accessibility
-    const tabs = screen.getAllByRole('button', { name: /School Info|Classes|Students/ });
-    tabs.forEach(tab => {
-      expect(tab).toHaveAttribute('aria-selected');
-    });
-    
-    // Check form accessibility
+    // Check ARIA attributes
     const schoolNameInput = screen.getByLabelText(/school name/i);
     expect(schoolNameInput).toHaveAttribute('aria-describedby');
   });

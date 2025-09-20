@@ -1,162 +1,106 @@
-import React, { useState, useEffect, lazy, Suspense } from 'react';
-import { reportService } from '../services/api';
-import PieChart, { createPieChartData } from './PieChart';
-import DatePicker from 'react-datepicker';
-import 'react-datepicker/dist/react-datepicker.css';
+import React, { useState, useEffect } from 'react';
+import { apiService } from '../services/api';
 import { CSVLink } from 'react-csv';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
+import { 
+  FunnelIcon, 
+  ArrowDownTrayIcon,
+  DocumentArrowDownIcon,
+  CalendarIcon
+} from '@heroicons/react/24/outline';
+import PieChart from './PieChart';
 import Skeleton from 'react-loading-skeleton';
 import 'react-loading-skeleton/dist/skeleton.css';
-import { 
-  CalendarDaysIcon,
-  DocumentArrowDownIcon,
-  ChartBarIcon,
-  TableCellsIcon,
-  FunnelIcon,
-  ArrowPathIcon
-} from '@heroicons/react/24/outline';
 
-// Lazy load components for better performance
-const LazyPieChart = lazy(() => import('./PieChart'));
-
+/**
+ * Reports component for viewing distribution statistics and generating exports
+ * Includes filtering, charts, and PDF/CSV export functionality
+ */
 const Reports = () => {
-  // Data state
   const [reports, setReports] = useState([]);
-  const [filteredReports, setFilteredReports] = useState([]);
-  const [schools, setSchools] = useState([]);
   const [loading, setLoading] = useState(true);
-  
-  // Filter state
   const [filters, setFilters] = useState({
-    schoolId: 'all',
-    startDate: null,
-    endDate: null,
-    type: 'all' // 'all', 'school', 'external'
+    school: 'all',
+    dateFrom: '',
+    dateTo: '',
+    type: 'all'
   });
-  
-  // UI state
-  const [viewMode, setViewMode] = useState('table'); // 'table', 'chart'
-  const [refreshing, setRefreshing] = useState(false);
 
-  // Fetch data on component mount
+  // Load reports data
   useEffect(() => {
-    fetchReportsData();
+    loadReports();
   }, []);
 
-  // Apply filters when filters or reports change
-  useEffect(() => {
-    applyFilters();
-  }, [reports, filters]);
-
-  // Fetch all reports and related data
-  const fetchReportsData = async () => {
+  const loadReports = async () => {
+    setLoading(true);
     try {
-      setLoading(true);
-      const [reportsData, schoolsData] = await Promise.all([
-        reportService.getReports(),
-        reportService.getDashboardStats() // This includes school data
-      ]);
-      
-      setReports(reportsData);
-      // Extract unique schools from reports
-      const uniqueSchools = Array.from(
-        new Set(reportsData.map(r => r.schoolId))
-      ).map(schoolId => {
-        const report = reportsData.find(r => r.schoolId === schoolId);
-        return {
-          id: schoolId,
-          name: report.schoolName
-        };
-      });
-      setSchools(uniqueSchools);
-      
+      const data = await apiService.getReports(filters);
+      setReports(data);
     } catch (error) {
-      console.error('Error fetching reports data:', error);
+      console.error('Error loading reports:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  // Refresh data
-  const refreshData = async () => {
-    setRefreshing(true);
-    await fetchReportsData();
-    setRefreshing(false);
-  };
-
-  // Apply filters to reports
-  const applyFilters = () => {
-    let filtered = [...reports];
-
-    // Filter by school
-    if (filters.schoolId !== 'all') {
-      filtered = filtered.filter(report => report.schoolId === filters.schoolId);
+  // Filter reports based on current filters
+  const filteredReports = reports.filter(report => {
+    const matchesSchool = filters.school === 'all' || report.schoolId === filters.school;
+    const matchesType = filters.type === 'all' || report.type === filters.type;
+    
+    let matchesDate = true;
+    if (filters.dateFrom) {
+      matchesDate = matchesDate && new Date(report.issuedAt) >= new Date(filters.dateFrom);
     }
-
-    // Filter by type
-    if (filters.type !== 'all') {
-      filtered = filtered.filter(report => report.type === filters.type);
+    if (filters.dateTo) {
+      matchesDate = matchesDate && new Date(report.issuedAt) <= new Date(filters.dateTo);
     }
-
-    // Filter by date range
-    if (filters.startDate && filters.endDate) {
-      filtered = filtered.filter(report => {
-        const reportDate = new Date(report.issuedAt);
-        return reportDate >= filters.startDate && reportDate <= filters.endDate;
-      });
-    }
-
-    setFilteredReports(filtered);
-  };
+    
+    return matchesSchool && matchesType && matchesDate;
+  });
 
   // Handle filter changes
   const handleFilterChange = (field, value) => {
-    setFilters(prev => ({
-      ...prev,
-      [field]: value
-    }));
+    setFilters(prev => ({ ...prev, [field]: value }));
   };
 
-  // Clear filters
-  const clearFilters = () => {
+  // Apply filters
+  const applyFilters = () => {
+    loadReports();
+  };
+
+  // Reset filters
+  const resetFilters = () => {
     setFilters({
-      schoolId: 'all',
-      startDate: null,
-      endDate: null,
+      school: 'all',
+      dateFrom: '',
+      dateTo: '',
       type: 'all'
     });
   };
 
-  // Generate chart data
+  // Get unique schools for filter
+  const getUniqueSchools = () => {
+    const schools = [...new Set(reports.map(report => report.schoolName))];
+    return schools;
+  };
+
+  // Prepare chart data
   const getChartData = () => {
-    const schoolDistribution = {};
-    const typeDistribution = { school: 0, external: 0 };
-
-    filteredReports.forEach(report => {
-      // School distribution
-      if (report.type === 'school') {
-        schoolDistribution[report.schoolName] = (schoolDistribution[report.schoolName] || 0) + report.books;
-      }
-      
-      // Type distribution
-      typeDistribution[report.type] += report.books;
-    });
-
+    const schoolDistributions = filteredReports.filter(r => r.type === 'school').length;
+    const externalCollections = filteredReports.filter(r => r.type === 'external').length;
+    
     return {
-      schoolData: createPieChartData(
-        Object.keys(schoolDistribution),
-        Object.values(schoolDistribution),
-        { label: 'Books by School' }
-      ),
-      typeData: createPieChartData(
-        ['School Distribution', 'External Collection'],
-        [typeDistribution.school, typeDistribution.external],
-        { 
-          label: 'Distribution Type',
-          colors: ['#007BFF', '#28A745']
-        }
-      )
+      labels: ['School Distributions', 'External Collections'],
+      datasets: [
+        {
+          data: [schoolDistributions, externalCollections],
+          backgroundColor: ['#007BFF', '#28A745'],
+          borderColor: ['#0056b3', '#1e7e34'],
+          borderWidth: 2,
+        },
+      ],
     };
   };
 
@@ -166,11 +110,11 @@ const Reports = () => {
       'Student Name': report.studentName,
       'School': report.schoolName,
       'Books': report.books,
-      'Type': report.type === 'school' ? 'School' : 'External',
-      'Issued Date': new Date(report.issuedAt).toLocaleDateString(),
+      'Type': report.type,
+      'Issued At': new Date(report.issuedAt).toLocaleDateString(),
       'Issued By': report.issuedBy
     }));
-
+    
     return csvData;
   };
 
@@ -182,142 +126,99 @@ const Reports = () => {
     doc.setFontSize(20);
     doc.text('FreeBooks Sekondi - Distribution Report', 20, 20);
     
-    // Filters info
+    // Date range
     doc.setFontSize(12);
-    let yPosition = 40;
-    
-    if (filters.schoolId !== 'all') {
-      const school = schools.find(s => s.id === filters.schoolId);
-      doc.text(`School: ${school?.name || 'Unknown'}`, 20, yPosition);
-      yPosition += 10;
-    }
-    
-    if (filters.startDate && filters.endDate) {
-      doc.text(
-        `Date Range: ${filters.startDate.toLocaleDateString()} - ${filters.endDate.toLocaleDateString()}`,
-        20,
-        yPosition
-      );
-      yPosition += 10;
-    }
-    
-    if (filters.type !== 'all') {
-      doc.text(`Type: ${filters.type === 'school' ? 'School' : 'External'}`, 20, yPosition);
-      yPosition += 10;
-    }
+    const dateRange = filters.dateFrom && filters.dateTo 
+      ? `${new Date(filters.dateFrom).toLocaleDateString()} - ${new Date(filters.dateTo).toLocaleDateString()}`
+      : 'All Time';
+    doc.text(`Report Period: ${dateRange}`, 20, 30);
     
     // Summary
-    const totalBooks = filteredReports.reduce((sum, report) => sum + report.books, 0);
-    const totalStudents = filteredReports.length;
-    
-    doc.text(`Total Students: ${totalStudents}`, 20, yPosition + 10);
-    doc.text(`Total Books: ${totalBooks}`, 20, yPosition + 20);
+    doc.setFontSize(14);
+    doc.text('Summary', 20, 45);
+    doc.setFontSize(12);
+    doc.text(`Total Distributions: ${filteredReports.length}`, 20, 55);
+    doc.text(`Total Books Distributed: ${filteredReports.reduce((sum, r) => sum + r.books, 0)}`, 20, 65);
     
     // Table
     const tableData = filteredReports.map(report => [
       report.studentName,
       report.schoolName,
-      report.books.toString(),
-      report.type === 'school' ? 'School' : 'External',
+      report.books,
+      report.type,
       new Date(report.issuedAt).toLocaleDateString()
     ]);
     
     doc.autoTable({
       head: [['Student Name', 'School', 'Books', 'Type', 'Date']],
       body: tableData,
-      startY: yPosition + 35,
-      styles: { fontSize: 8 },
+      startY: 80,
+      styles: { fontSize: 10 },
       headStyles: { fillColor: [0, 123, 255] }
     });
     
-    // Save
-    const filename = `freebooks_report_${new Date().toISOString().split('T')[0]}.pdf`;
-    doc.save(filename);
+    doc.save('freebooks-distribution-report.pdf');
   };
 
-  // Format date
-  const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString();
-  };
-
-  // Get summary statistics
-  const getSummaryStats = () => {
-    const totalBooks = filteredReports.reduce((sum, report) => sum + report.books, 0);
-    const schoolBooks = filteredReports.filter(r => r.type === 'school').reduce((sum, report) => sum + report.books, 0);
-    const externalBooks = filteredReports.filter(r => r.type === 'external').reduce((sum, report) => sum + report.books, 0);
+  // Get statistics
+  const getStatistics = () => {
+    const totalDistributions = filteredReports.length;
+    const totalBooks = filteredReports.reduce((sum, r) => sum + r.books, 0);
+    const schoolDistributions = filteredReports.filter(r => r.type === 'school').length;
+    const externalCollections = filteredReports.filter(r => r.type === 'external').length;
     
     return {
-      totalStudents: filteredReports.length,
+      totalDistributions,
       totalBooks,
-      schoolBooks,
-      externalBooks,
-      averageBooksPerStudent: filteredReports.length > 0 ? (totalBooks / filteredReports.length).toFixed(1) : 0
+      schoolDistributions,
+      externalCollections
     };
   };
 
-  const summaryStats = getSummaryStats();
-  const chartData = getChartData();
+  const stats = getStatistics();
 
   return (
-    <div className="pt-16 min-h-screen bg-gray-50">
+    <div className="pt-16 min-h-screen bg-background">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
-        <div className="flex justify-between items-center mb-8">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Distribution Reports</h1>
-            <p className="mt-2 text-gray-600">
-              View and analyze book distribution data across schools and external collections.
-            </p>
-          </div>
-          
-          <button
-            onClick={refreshData}
-            disabled={refreshing}
-            className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-50"
-          >
-            <ArrowPathIcon className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
-            {refreshing ? 'Refreshing...' : 'Refresh'}
-          </button>
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900">Reports</h1>
+          <p className="mt-2 text-gray-600">
+            View distribution statistics and generate reports.
+          </p>
         </div>
 
         {/* Filters */}
-        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-medium text-gray-900">
-              <FunnelIcon className="h-5 w-5 inline mr-2" />
-              Filters
-            </h2>
-            <button
-              onClick={clearFilters}
-              className="text-sm text-primary hover:text-primary-hover"
-            >
-              Clear All
-            </button>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {/* School filter */}
+        <div className="bg-white rounded-lg shadow-md p-6 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+            {/* School Filter */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">School</label>
+              <label htmlFor="school-filter" className="block text-sm font-medium text-gray-700 mb-2">
+                School
+              </label>
               <select
-                value={filters.schoolId}
-                onChange={(e) => handleFilterChange('schoolId', e.target.value)}
-                className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary sm:text-sm"
+                id="school-filter"
+                value={filters.school}
+                onChange={(e) => handleFilterChange('school', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
               >
                 <option value="all">All Schools</option>
-                {schools.map(school => (
-                  <option key={school.id} value={school.id}>{school.name}</option>
+                {getUniqueSchools().map(school => (
+                  <option key={school} value={school}>{school}</option>
                 ))}
               </select>
             </div>
 
-            {/* Type filter */}
+            {/* Type Filter */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
+              <label htmlFor="type-filter" className="block text-sm font-medium text-gray-700 mb-2">
+                Type
+              </label>
               <select
+                id="type-filter"
                 value={filters.type}
                 onChange={(e) => handleFilterChange('type', e.target.value)}
-                className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary sm:text-sm"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
               >
                 <option value="all">All Types</option>
                 <option value="school">School Distribution</option>
@@ -325,254 +226,257 @@ const Reports = () => {
               </select>
             </div>
 
-            {/* Start date */}
+            {/* Date From */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
-              <DatePicker
-                selected={filters.startDate}
-                onChange={(date) => handleFilterChange('startDate', date)}
-                className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary sm:text-sm"
-                placeholderText="Select start date"
-                maxDate={new Date()}
+              <label htmlFor="date-from" className="block text-sm font-medium text-gray-700 mb-2">
+                From Date
+              </label>
+              <input
+                type="date"
+                id="date-from"
+                value={filters.dateFrom}
+                onChange={(e) => handleFilterChange('dateFrom', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
               />
             </div>
 
-            {/* End date */}
+            {/* Date To */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
-              <DatePicker
-                selected={filters.endDate}
-                onChange={(date) => handleFilterChange('endDate', date)}
-                className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary sm:text-sm"
-                placeholderText="Select end date"
-                minDate={filters.startDate}
-                maxDate={new Date()}
+              <label htmlFor="date-to" className="block text-sm font-medium text-gray-700 mb-2">
+                To Date
+              </label>
+              <input
+                type="date"
+                id="date-to"
+                value={filters.dateTo}
+                onChange={(e) => handleFilterChange('dateTo', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
               />
+            </div>
+
+            {/* Filter Actions */}
+            <div className="flex items-end space-x-2">
+              <button
+                onClick={applyFilters}
+                className="bg-primary text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors flex items-center space-x-2"
+              >
+                <FunnelIcon className="h-4 w-4" />
+                <span>Apply</span>
+              </button>
+              <button
+                onClick={resetFilters}
+                className="bg-gray-300 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-400 transition-colors"
+              >
+                Reset
+              </button>
             </div>
           </div>
         </div>
 
-        {/* Summary Statistics */}
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
-          <div className="bg-white rounded-lg shadow-md p-4">
-            <div className="text-sm font-medium text-gray-600">Total Students</div>
-            {loading ? (
-              <Skeleton height={24} width={60} />
-            ) : (
-              <div className="text-2xl font-bold text-gray-900">{summaryStats.totalStudents}</div>
-            )}
+        {/* Statistics Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <DocumentArrowDownIcon className="h-8 w-8 text-blue-500" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-500">Total Distributions</p>
+                {loading ? (
+                  <Skeleton height={32} width={100} />
+                ) : (
+                  <p className="text-2xl font-bold text-gray-900">{stats.totalDistributions}</p>
+                )}
+              </div>
+            </div>
           </div>
-          
-          <div className="bg-white rounded-lg shadow-md p-4">
-            <div className="text-sm font-medium text-gray-600">Total Books</div>
-            {loading ? (
-              <Skeleton height={24} width={80} />
-            ) : (
-              <div className="text-2xl font-bold text-primary">{summaryStats.totalBooks}</div>
-            )}
+
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <DocumentArrowDownIcon className="h-8 w-8 text-green-500" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-500">Total Books</p>
+                {loading ? (
+                  <Skeleton height={32} width={100} />
+                ) : (
+                  <p className="text-2xl font-bold text-gray-900">{stats.totalBooks.toLocaleString()}</p>
+                )}
+              </div>
+            </div>
           </div>
-          
-          <div className="bg-white rounded-lg shadow-md p-4">
-            <div className="text-sm font-medium text-gray-600">School Books</div>
-            {loading ? (
-              <Skeleton height={24} width={80} />
-            ) : (
-              <div className="text-2xl font-bold text-blue-600">{summaryStats.schoolBooks}</div>
-            )}
+
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <DocumentArrowDownIcon className="h-8 w-8 text-purple-500" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-500">School Distributions</p>
+                {loading ? (
+                  <Skeleton height={32} width={100} />
+                ) : (
+                  <p className="text-2xl font-bold text-gray-900">{stats.schoolDistributions}</p>
+                )}
+              </div>
+            </div>
           </div>
-          
-          <div className="bg-white rounded-lg shadow-md p-4">
-            <div className="text-sm font-medium text-gray-600">External Books</div>
-            {loading ? (
-              <Skeleton height={24} width={80} />
-            ) : (
-              <div className="text-2xl font-bold text-green-600">{summaryStats.externalBooks}</div>
-            )}
-          </div>
-          
-          <div className="bg-white rounded-lg shadow-md p-4">
-            <div className="text-sm font-medium text-gray-600">Avg Books/Student</div>
-            {loading ? (
-              <Skeleton height={24} width={40} />
-            ) : (
-              <div className="text-2xl font-bold text-gray-900">{summaryStats.averageBooksPerStudent}</div>
-            )}
+
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <DocumentArrowDownIcon className="h-8 w-8 text-orange-500" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-500">External Collections</p>
+                {loading ? (
+                  <Skeleton height={32} width={100} />
+                ) : (
+                  <p className="text-2xl font-bold text-gray-900">{stats.externalCollections}</p>
+                )}
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* View Mode Toggle and Export */}
-        <div className="flex justify-between items-center mb-6">
-          <div className="flex space-x-1 bg-gray-100 rounded-lg p-1">
-            <button
-              onClick={() => setViewMode('table')}
-              className={`flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors ${
-                viewMode === 'table'
-                  ? 'bg-white text-primary shadow-sm'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              <TableCellsIcon className="h-4 w-4 mr-2" />
-              Table
-            </button>
-            <button
-              onClick={() => setViewMode('chart')}
-              className={`flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors ${
-                viewMode === 'chart'
-                  ? 'bg-white text-primary shadow-sm'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              <ChartBarIcon className="h-4 w-4 mr-2" />
-              Charts
-            </button>
+        {/* Chart and Export Actions */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+          {/* Pie Chart */}
+          <div>
+            <PieChart
+              data={getChartData()}
+              title="Distribution Breakdown"
+              height={300}
+            />
           </div>
 
-          <div className="flex space-x-2">
-            <CSVLink
-              data={exportToCSV()}
-              filename={`freebooks_report_${new Date().toISOString().split('T')[0]}.csv`}
-              className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-colors"
-            >
-              <DocumentArrowDownIcon className="h-4 w-4 mr-2" />
-              Export CSV
-            </CSVLink>
-            
-            <button
-              onClick={exportToPDF}
-              className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-colors"
-            >
-              <DocumentArrowDownIcon className="h-4 w-4 mr-2" />
-              Export PDF
-            </button>
+          {/* Export Actions */}
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Export Reports</h3>
+            <div className="space-y-4">
+              <button
+                onClick={exportToPDF}
+                className="w-full bg-red-500 text-white px-4 py-3 rounded-md hover:bg-red-600 transition-colors flex items-center justify-center space-x-2"
+              >
+                <DocumentArrowDownIcon className="h-5 w-5" />
+                <span>Export to PDF</span>
+              </button>
+              
+              <CSVLink
+                data={exportToCSV()}
+                filename="freebooks-distribution-report.csv"
+                className="w-full bg-green-500 text-white px-4 py-3 rounded-md hover:bg-green-600 transition-colors flex items-center justify-center space-x-2 no-underline"
+              >
+                <ArrowDownTrayIcon className="h-5 w-5" />
+                <span>Export to CSV</span>
+              </CSVLink>
+            </div>
           </div>
         </div>
 
-        {/* Content based on view mode */}
-        {viewMode === 'table' ? (
-          /* Table View */
-          <div className="bg-white rounded-lg shadow-md overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200" aria-label="Distribution reports">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Student
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      School
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Books
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Type
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Date
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Issued By
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {loading ? (
-                    // Loading skeleton
-                    [...Array(5)].map((_, index) => (
-                      <tr key={index}>
-                        <td className="px-6 py-4"><Skeleton height={20} /></td>
-                        <td className="px-6 py-4"><Skeleton height={20} /></td>
-                        <td className="px-6 py-4"><Skeleton height={20} width={40} /></td>
-                        <td className="px-6 py-4"><Skeleton height={20} width={60} /></td>
-                        <td className="px-6 py-4"><Skeleton height={20} width={80} /></td>
-                        <td className="px-6 py-4"><Skeleton height={20} width={80} /></td>
-                      </tr>
-                    ))
-                  ) : filteredReports.length === 0 ? (
-                    <tr>
-                      <td colSpan="6" className="px-6 py-12 text-center text-gray-500">
-                        No distribution records found
+        {/* Reports Table */}
+        <div className="bg-white rounded-lg shadow-md overflow-hidden">
+          <div className="px-6 py-4 border-b border-gray-200">
+            <h2 className="text-lg font-semibold text-gray-900">
+              Distribution Records ({filteredReports.length})
+            </h2>
+          </div>
+          
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200" aria-label="Distribution records">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Student Name
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    School
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Books
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Type
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Issued At
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Issued By
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {loading ? (
+                  Array.from({ length: 5 }).map((_, index) => (
+                    <tr key={index}>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <Skeleton height={20} width={150} />
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <Skeleton height={20} width={200} />
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <Skeleton height={20} width={80} />
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <Skeleton height={20} width={100} />
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <Skeleton height={20} width={120} />
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <Skeleton height={20} width={100} />
                       </td>
                     </tr>
-                  ) : (
-                    filteredReports.map((report) => (
-                      <tr key={report.id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                  ))
+                ) : filteredReports.length > 0 ? (
+                  filteredReports.map((report) => (
+                    <tr key={report.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-medium text-gray-900">
                           {report.studentName}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-900">
                           {report.schoolName}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-900">
                           {report.books}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
-                            report.type === 'school' 
-                              ? 'bg-blue-100 text-blue-800' 
-                              : 'bg-green-100 text-green-800'
-                          }`}>
-                            {report.type === 'school' ? 'School' : 'External'}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {formatDate(report.issuedAt)}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {report.issuedBy}
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                          report.type === 'school' 
+                            ? 'bg-blue-100 text-blue-800' 
+                            : 'bg-green-100 text-green-800'
+                        }`}>
+                          {report.type === 'school' ? 'School' : 'External'}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {new Date(report.issuedAt).toLocaleDateString()}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {report.issuedBy}
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan="6" className="px-6 py-12 text-center text-gray-500">
+                      No distribution records found
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
           </div>
-        ) : (
-          /* Chart View */
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Distribution by Type</h3>
-              {loading ? (
-                <Skeleton height={300} />
-              ) : (
-                <Suspense fallback={<Skeleton height={300} />}>
-                  <PieChart
-                    data={chartData.typeData}
-                    width={400}
-                    height={300}
-                    loading={loading}
-                    aria-label="Distribution breakdown by type"
-                  />
-                </Suspense>
-              )}
-            </div>
-
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">School Distribution</h3>
-              {loading ? (
-                <Skeleton height={300} />
-              ) : chartData.schoolData.datasets[0].data.length > 0 ? (
-                <Suspense fallback={<Skeleton height={300} />}>
-                  <PieChart
-                    data={chartData.schoolData}
-                    width={400}
-                    height={300}
-                    loading={loading}
-                    aria-label="Distribution breakdown by school"
-                  />
-                </Suspense>
-              ) : (
-                <div className="flex items-center justify-center h-64 text-gray-500">
-                  <div className="text-center">
-                    <ChartBarIcon className="h-16 w-16 mx-auto mb-4 text-gray-300" />
-                    <p>No school distribution data available</p>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
+        </div>
       </div>
     </div>
   );

@@ -1,226 +1,222 @@
 import React, { useState, useEffect } from 'react';
-import { schoolService } from '../services/api';
 import { useInventory } from '../contexts/InventoryContext';
-import { Dialog } from '@headlessui/react';
+import { apiService } from '../services/api';
+import { Dialog, Transition } from '@headlessui/react';
+import { Fragment } from 'react';
+import { 
+  EyeIcon, 
+  CheckCircleIcon, 
+  TruckIcon,
+  MagnifyingGlassIcon,
+  FunnelIcon
+} from '@heroicons/react/24/outline';
 import FileUpload from './FileUpload';
 import Skeleton from 'react-loading-skeleton';
 import 'react-loading-skeleton/dist/skeleton.css';
-import { 
-  CheckCircleIcon, 
-  XCircleIcon,
-  EyeIcon,
-  TruckIcon,
-  MagnifyingGlassIcon,
-  ExclamationTriangleIcon,
-  DocumentCheckIcon
-} from '@heroicons/react/24/outline';
 
+/**
+ * AdminApproval component for reviewing and approving school submissions
+ * Includes filtering, viewing details, and delivery confirmation
+ */
 const AdminApproval = () => {
-  const { updateInventory, canDistribute } = useInventory();
+  const { updateInventory, hasEnoughBooks } = useInventory();
   const [schools, setSchools] = useState([]);
-  const [filteredSchools, setFilteredSchools] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
-  
-  // Modal states
-  const [showViewModal, setShowViewModal] = useState(false);
-  const [showApprovalModal, setShowApprovalModal] = useState(false);
-  const [showDeliveryModal, setShowDeliveryModal] = useState(false);
   const [selectedSchool, setSelectedSchool] = useState(null);
+  const [showViewModal, setShowViewModal] = useState(false);
+  const [showDeliverModal, setShowDeliverModal] = useState(false);
+  const [deliveryProof, setDeliveryProof] = useState(null);
+  const [processing, setProcessing] = useState(false);
   
-  // Action states
-  const [actionLoading, setActionLoading] = useState(false);
-  const [deliveryProofs, setDeliveryProofs] = useState([]);
+  // Filters
+  const [filters, setFilters] = useState({
+    status: 'all',
+    search: ''
+  });
 
-  // Fetch schools on component mount
+  // Load schools data
   useEffect(() => {
-    fetchSchools();
+    loadSchools();
   }, []);
 
-  // Filter schools based on search and status
-  useEffect(() => {
-    let filtered = [...schools];
-
-    // Filter by status
-    if (statusFilter !== 'all') {
-      filtered = filtered.filter(school => school.status === statusFilter);
-    }
-
-    // Filter by search query
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(school =>
-        school.name.toLowerCase().includes(query) ||
-        school.submittedBy.toLowerCase().includes(query)
-      );
-    }
-
-    setFilteredSchools(filtered);
-  }, [schools, searchQuery, statusFilter]);
-
-  // Fetch all schools
-  const fetchSchools = async () => {
+  const loadSchools = async () => {
+    setLoading(true);
     try {
-      setLoading(true);
-      const schoolData = await schoolService.getSchools();
-      setSchools(schoolData);
+      const data = await apiService.getPendingSchools();
+      setSchools(data);
     } catch (error) {
-      console.error('Error fetching schools:', error);
+      console.error('Error loading schools:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  // Handle school approval
-  const handleApproveSchool = async () => {
-    if (!selectedSchool) return;
+  // Filter schools based on current filters
+  const filteredSchools = schools.filter(school => {
+    const matchesStatus = filters.status === 'all' || school.status === filters.status;
+    const matchesSearch = school.name.toLowerCase().includes(filters.search.toLowerCase());
+    return matchesStatus && matchesSearch;
+  });
 
-    const booksNeeded = selectedSchool.totalDeclared * 20; // 20 books per student
-    
-    if (!canDistribute(booksNeeded)) {
-      alert('Insufficient books remaining for this approval');
-      return;
-    }
+  // Handle status filter change
+  const handleStatusFilter = (status) => {
+    setFilters(prev => ({ ...prev, status }));
+  };
 
+  // Handle search filter change
+  const handleSearchFilter = (e) => {
+    setFilters(prev => ({ ...prev, search: e.target.value }));
+  };
+
+  // View school details
+  const viewSchoolDetails = (school) => {
+    setSelectedSchool(school);
+    setShowViewModal(true);
+  };
+
+  // Approve school
+  const approveSchool = async (schoolId) => {
+    setProcessing(true);
     try {
-      setActionLoading(true);
-      await schoolService.approveSchool(selectedSchool.id);
-      
-      // Update inventory
-      updateInventory(booksNeeded);
-      
-      // Update local state
-      setSchools(prevSchools => 
-        prevSchools.map(school => 
-          school.id === selectedSchool.id 
+      const result = await apiService.approveSchool(schoolId);
+      if (result.success) {
+        // Update local state
+        setSchools(prev => prev.map(school => 
+          school.id === schoolId 
             ? { ...school, status: 'approved' }
             : school
-        )
-      );
-      
-      setShowApprovalModal(false);
-      setSelectedSchool(null);
+        ));
+      }
     } catch (error) {
       console.error('Error approving school:', error);
-      alert('Failed to approve school. Please try again.');
     } finally {
-      setActionLoading(false);
+      setProcessing(false);
     }
   };
 
-  // Handle delivery confirmation
-  const handleDeliveryConfirmation = async () => {
-    if (!selectedSchool || deliveryProofs.length === 0) return;
-
-    try {
-      setActionLoading(true);
-      
-      const deliveryData = {
-        proofs: deliveryProofs.map(proof => proof.name),
-        deliveredAt: new Date().toISOString(),
-        deliveredBy: 'admin' // This would come from auth context in real app
-      };
-      
-      await schoolService.deliverToSchool(selectedSchool.id, deliveryData);
-      
-      // Update local state
-      setSchools(prevSchools => 
-        prevSchools.map(school => 
-          school.id === selectedSchool.id 
-            ? { 
-                ...school, 
-                status: 'delivered',
-                deliveryProofs: deliveryData.proofs,
-                deliveredAt: deliveryData.deliveredAt
-              }
-            : school
-        )
-      );
-      
-      setShowDeliveryModal(false);
-      setSelectedSchool(null);
-      setDeliveryProofs([]);
-    } catch (error) {
-      console.error('Error confirming delivery:', error);
-      alert('Failed to confirm delivery. Please try again.');
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
-  // Get status badge styling
-  const getStatusBadge = (status) => {
-    const styles = {
-      pending: 'bg-yellow-100 text-yellow-800',
-      approved: 'bg-blue-100 text-blue-800',
-      delivered: 'bg-green-100 text-green-800',
-      rejected: 'bg-red-100 text-red-800'
-    };
+  // Deliver school books
+  const deliverSchoolBooks = async () => {
+    if (!selectedSchool || !deliveryProof) return;
     
-    return `inline-flex px-2 py-1 text-xs font-medium rounded-full ${styles[status] || 'bg-gray-100 text-gray-800'}`;
+    setProcessing(true);
+    try {
+      const result = await apiService.deliverSchool(selectedSchool.id, deliveryProof);
+      if (result.success) {
+        // Update inventory
+        const booksToDistribute = selectedSchool.totalDeclared * 20;
+        updateInventory(booksToDistribute);
+        
+        // Update local state
+        setSchools(prev => prev.map(school => 
+          school.id === selectedSchool.id 
+            ? { ...school, status: 'delivered', deliveryProofs: [...school.deliveryProofs, 'delivery_proof.pdf'] }
+            : school
+        ));
+        
+        setShowDeliverModal(false);
+        setSelectedSchool(null);
+        setDeliveryProof(null);
+      }
+    } catch (error) {
+      console.error('Error delivering books:', error);
+    } finally {
+      setProcessing(false);
+    }
   };
 
-  // Format date
-  const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString();
+  // Handle delivery proof upload
+  const handleDeliveryProofUpload = (files) => {
+    if (files.length > 0) {
+      setDeliveryProof(files[0]);
+    }
+  };
+
+  // Get status badge color
+  const getStatusBadgeColor = (status) => {
+    switch (status) {
+      case 'pending':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'approved':
+        return 'bg-blue-100 text-blue-800';
+      case 'delivered':
+        return 'bg-green-100 text-green-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
   };
 
   return (
-    <div className="pt-16 min-h-screen bg-gray-50">
+    <div className="pt-16 min-h-screen bg-background">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">School Approvals</h1>
+          <h1 className="text-3xl font-bold text-gray-900">Admin Approval</h1>
           <p className="mt-2 text-gray-600">
             Review and approve school submissions for book distribution.
           </p>
         </div>
 
         {/* Filters */}
-        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+        <div className="bg-white rounded-lg shadow-md p-6 mb-8">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Search */}
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
-              </div>
-              <input
-                type="text"
-                placeholder="Search schools..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-primary focus:border-primary sm:text-sm"
-              />
-            </div>
-
-            {/* Status filter */}
+            {/* Status Filter */}
             <div>
+              <label htmlFor="status-filter" className="block text-sm font-medium text-gray-700 mb-2">
+                Filter by Status
+              </label>
               <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary sm:text-sm"
+                id="status-filter"
+                value={filters.status}
+                onChange={(e) => handleStatusFilter(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
               >
-                <option value="all">All Status</option>
+                <option value="all">All Statuses</option>
                 <option value="pending">Pending</option>
                 <option value="approved">Approved</option>
                 <option value="delivered">Delivered</option>
               </select>
             </div>
+
+            {/* Search Filter */}
+            <div>
+              <label htmlFor="search-filter" className="block text-sm font-medium text-gray-700 mb-2">
+                Search Schools
+              </label>
+              <div className="relative">
+                <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                <input
+                  type="text"
+                  id="search-filter"
+                  value={filters.search}
+                  onChange={handleSearchFilter}
+                  className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                  placeholder="Search by school name..."
+                />
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Schools table */}
+        {/* Schools Table */}
         <div className="bg-white rounded-lg shadow-md overflow-hidden">
+          <div className="px-6 py-4 border-b border-gray-200">
+            <h2 className="text-lg font-semibold text-gray-900">
+              School Submissions ({filteredSchools.length})
+            </h2>
+          </div>
+          
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200" aria-label="School submissions">
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    School
+                    School Name
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Students
+                    Total Students
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Books Required
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Status
@@ -235,323 +231,278 @@ const AdminApproval = () => {
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {loading ? (
-                  // Loading skeleton
-                  [...Array(10)].map((_, index) => (
+                  Array.from({ length: 5 }).map((_, index) => (
                     <tr key={index}>
-                      <td className="px-6 py-4">
-                        <Skeleton height={40} />
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <Skeleton height={20} width={200} />
                       </td>
-                      <td className="px-6 py-4">
-                        <Skeleton height={20} width={60} />
-                      </td>
-                      <td className="px-6 py-4">
-                        <Skeleton height={24} width={80} />
-                      </td>
-                      <td className="px-6 py-4">
+                      <td className="px-6 py-4 whitespace-nowrap">
                         <Skeleton height={20} width={100} />
                       </td>
-                      <td className="px-6 py-4">
-                        <div className="flex space-x-2">
-                          <Skeleton height={32} width={80} />
-                          <Skeleton height={32} width={80} />
-                        </div>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <Skeleton height={20} width={100} />
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <Skeleton height={20} width={80} />
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <Skeleton height={20} width={120} />
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <Skeleton height={20} width={150} />
                       </td>
                     </tr>
                   ))
-                ) : filteredSchools.length === 0 ? (
-                  <tr>
-                    <td colSpan="5" className="px-6 py-12 text-center text-gray-500">
-                      {schools.length === 0 ? 'No schools found' : 'No schools match your filters'}
-                    </td>
-                  </tr>
-                ) : (
+                ) : filteredSchools.length > 0 ? (
                   filteredSchools.map((school) => (
                     <tr key={school.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div>
-                          <div className="text-sm font-medium text-gray-900">
-                            {school.name}
-                          </div>
-                          <div className="text-sm text-gray-500">
-                            {school.submittedBy}
-                          </div>
+                        <div className="text-sm font-medium text-gray-900">
+                          {school.name}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm text-gray-900">
                           {school.totalDeclared}
                         </div>
-                        <div className="text-sm text-gray-500">
-                          {school.totalDeclared * 20} books
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-900">
+                          {school.totalDeclared * 20}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={getStatusBadge(school.status)}>
+                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusBadgeColor(school.status)}`}>
                           {school.status.charAt(0).toUpperCase() + school.status.slice(1)}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {formatDate(school.createdAt)}
+                        {new Date(school.createdAt).toLocaleDateString()}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                        <button
-                          onClick={() => {
-                            setSelectedSchool(school);
-                            setShowViewModal(true);
-                          }}
-                          className="text-primary hover:text-primary-hover"
-                          title="View details"
-                        >
-                          <EyeIcon className="h-5 w-5" />
-                        </button>
-                        
-                        {school.status === 'pending' && (
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <div className="flex space-x-2">
                           <button
-                            onClick={() => {
-                              setSelectedSchool(school);
-                              setShowApprovalModal(true);
-                            }}
-                            className="text-green-600 hover:text-green-800"
-                            title="Approve school"
+                            onClick={() => viewSchoolDetails(school)}
+                            className="text-blue-600 hover:text-blue-900"
+                            aria-label={`View details for ${school.name}`}
                           >
-                            <CheckCircleIcon className="h-5 w-5" />
+                            <EyeIcon className="h-5 w-5" />
                           </button>
-                        )}
-                        
-                        {school.status === 'approved' && (
-                          <button
-                            onClick={() => {
-                              setSelectedSchool(school);
-                              setShowDeliveryModal(true);
-                            }}
-                            className="text-blue-600 hover:text-blue-800"
-                            title="Mark as delivered"
-                          >
-                            <TruckIcon className="h-5 w-5" />
-                          </button>
-                        )}
+                          
+                          {school.status === 'pending' && (
+                            <button
+                              onClick={() => approveSchool(school.id)}
+                              disabled={processing}
+                              className="text-green-600 hover:text-green-900 disabled:opacity-50"
+                              aria-label={`Approve ${school.name}`}
+                            >
+                              <CheckCircleIcon className="h-5 w-5" />
+                            </button>
+                          )}
+                          
+                          {school.status === 'approved' && (
+                            <button
+                              onClick={() => {
+                                setSelectedSchool(school);
+                                setShowDeliverModal(true);
+                              }}
+                              className="text-purple-600 hover:text-purple-900"
+                              aria-label={`Deliver books to ${school.name}`}
+                            >
+                              <TruckIcon className="h-5 w-5" />
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))
+                ) : (
+                  <tr>
+                    <td colSpan="6" className="px-6 py-12 text-center text-gray-500">
+                      No schools found matching your criteria
+                    </td>
+                  </tr>
                 )}
               </tbody>
             </table>
           </div>
         </div>
 
-        {/* View Modal */}
-        <Dialog 
-          open={showViewModal} 
-          onClose={() => setShowViewModal(false)}
-          className="relative z-50"
-        >
-          <div className="fixed inset-0 bg-black bg-opacity-25" />
-          <div className="fixed inset-0 overflow-y-auto">
-            <div className="flex min-h-full items-center justify-center p-4">
-              <Dialog.Panel className="w-full max-w-2xl bg-white rounded-lg shadow-xl">
-                <div className="px-6 py-4 border-b border-gray-200">
-                  <Dialog.Title className="text-lg font-medium text-gray-900">
-                    School Details
-                  </Dialog.Title>
-                </div>
-                
-                {selectedSchool && (
-                  <div className="px-6 py-4 space-y-4">
-                    <div>
-                      <h3 className="text-lg font-semibold">{selectedSchool.name}</h3>
-                      <p className="text-gray-600">Submitted by: {selectedSchool.submittedBy}</p>
-                      <p className="text-gray-600">Date: {formatDate(selectedSchool.createdAt)}</p>
-                      <span className={getStatusBadge(selectedSchool.status)}>
-                        {selectedSchool.status.charAt(0).toUpperCase() + selectedSchool.status.slice(1)}
-                      </span>
-                    </div>
+        {/* View School Details Modal */}
+        <Transition appear show={showViewModal} as={Fragment}>
+          <Dialog as="div" className="relative z-50" onClose={() => setShowViewModal(false)}>
+            <Transition.Child
+              as={Fragment}
+              enter="ease-out duration-300"
+              enterFrom="opacity-0"
+              enterTo="opacity-100"
+              leave="ease-in duration-200"
+              leaveFrom="opacity-100"
+              leaveTo="opacity-0"
+            >
+              <div className="fixed inset-0 bg-black bg-opacity-25" />
+            </Transition.Child>
+
+            <div className="fixed inset-0 overflow-y-auto">
+              <div className="flex min-h-full items-center justify-center p-4 text-center">
+                <Transition.Child
+                  as={Fragment}
+                  enter="ease-out duration-300"
+                  enterFrom="opacity-0 scale-95"
+                  enterTo="opacity-100 scale-100"
+                  leave="ease-in duration-200"
+                  leaveFrom="opacity-100 scale-100"
+                  leaveTo="opacity-0 scale-95"
+                >
+                  <Dialog.Panel className="w-full max-w-4xl transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all">
+                    <Dialog.Title as="h3" className="text-lg font-medium leading-6 text-gray-900 mb-4">
+                      {selectedSchool?.name} - Submission Details
+                    </Dialog.Title>
                     
-                    <div>
-                      <h4 className="font-medium mb-2">Class Breakdown:</h4>
-                      <div className="grid grid-cols-2 gap-2">
-                        {selectedSchool.classes.map((cls, index) => (
-                          <div key={index} className="flex justify-between p-2 bg-gray-50 rounded">
-                            <span>{cls.className}</span>
-                            <span>{cls.declaredCount} students</span>
+                    {selectedSchool && (
+                      <div className="space-y-6">
+                        {/* School Info */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <h4 className="font-medium text-gray-900">Total Students</h4>
+                            <p className="text-gray-600">{selectedSchool.totalDeclared}</p>
                           </div>
-                        ))}
+                          <div>
+                            <h4 className="font-medium text-gray-900">Books Required</h4>
+                            <p className="text-gray-600">{selectedSchool.totalDeclared * 20}</p>
+                          </div>
+                        </div>
+
+                        {/* Classes */}
+                        <div>
+                          <h4 className="font-medium text-gray-900 mb-2">Classes</h4>
+                          <div className="space-y-2">
+                            {selectedSchool.classes.map((cls, index) => (
+                              <div key={index} className="flex justify-between p-2 bg-gray-50 rounded">
+                                <span>{cls.className}</span>
+                                <span className="font-medium">{cls.declaredCount} students</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Students */}
+                        <div>
+                          <h4 className="font-medium text-gray-900 mb-2">Students ({selectedSchool.students.length})</h4>
+                          <div className="max-h-60 overflow-y-auto">
+                            <table className="min-w-full divide-y divide-gray-200">
+                              <thead className="bg-gray-50">
+                                <tr>
+                                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
+                                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">DOB</th>
+                                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Class</th>
+                                </tr>
+                              </thead>
+                              <tbody className="bg-white divide-y divide-gray-200">
+                                {selectedSchool.students.map((student, index) => (
+                                  <tr key={index}>
+                                    <td className="px-3 py-2 text-sm text-gray-900">{student.name}</td>
+                                    <td className="px-3 py-2 text-sm text-gray-900">{student.dob}</td>
+                                    <td className="px-3 py-2 text-sm text-gray-900">{student.className}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
                       </div>
+                    )}
+
+                    <div className="mt-6 flex justify-end">
+                      <button
+                        onClick={() => setShowViewModal(false)}
+                        className="bg-gray-300 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-400 transition-colors"
+                      >
+                        Close
+                      </button>
                     </div>
+                  </Dialog.Panel>
+                </Transition.Child>
+              </div>
+            </div>
+          </Dialog>
+        </Transition>
+
+        {/* Delivery Confirmation Modal */}
+        <Transition appear show={showDeliverModal} as={Fragment}>
+          <Dialog as="div" className="relative z-50" onClose={() => setShowDeliverModal(false)}>
+            <Transition.Child
+              as={Fragment}
+              enter="ease-out duration-300"
+              enterFrom="opacity-0"
+              enterTo="opacity-100"
+              leave="ease-in duration-200"
+              leaveFrom="opacity-100"
+              leaveTo="opacity-0"
+            >
+              <div className="fixed inset-0 bg-black bg-opacity-25" />
+            </Transition.Child>
+
+            <div className="fixed inset-0 overflow-y-auto">
+              <div className="flex min-h-full items-center justify-center p-4 text-center">
+                <Transition.Child
+                  as={Fragment}
+                  enter="ease-out duration-300"
+                  enterFrom="opacity-0 scale-95"
+                  enterTo="opacity-100 scale-100"
+                  leave="ease-in duration-200"
+                  leaveFrom="opacity-100 scale-100"
+                  leaveTo="opacity-0 scale-95"
+                >
+                  <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all">
+                    <Dialog.Title as="h3" className="text-lg font-medium leading-6 text-gray-900 mb-4">
+                      Confirm Delivery
+                    </Dialog.Title>
                     
-                    <div className="bg-blue-50 p-4 rounded-lg">
-                      <div className="flex justify-between items-center">
-                        <span className="font-medium">Total Students:</span>
-                        <span className="text-lg font-bold">{selectedSchool.totalDeclared}</span>
+                    {selectedSchool && (
+                      <div className="space-y-4">
+                        <p className="text-sm text-gray-600">
+                          Confirm delivery of <strong>{selectedSchool.totalDeclared * 20} books</strong> to{' '}
+                          <strong>{selectedSchool.name}</strong>
+                        </p>
+                        
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Upload Delivery Proof
+                          </label>
+                          <FileUpload
+                            onFileSelect={handleDeliveryProofUpload}
+                            acceptedTypes={{
+                              'application/pdf': ['.pdf'],
+                              'image/*': ['.png', '.jpg', '.jpeg']
+                            }}
+                            placeholder="Upload delivery receipt or photo"
+                          />
+                        </div>
                       </div>
-                      <div className="flex justify-between items-center">
-                        <span className="font-medium">Books Required:</span>
-                        <span className="text-lg font-bold">{selectedSchool.totalDeclared * 20}</span>
-                      </div>
-                    </div>
-                  </div>
-                )}
-                
-                <div className="px-6 py-4 border-t border-gray-200 flex justify-end">
-                  <button
-                    onClick={() => setShowViewModal(false)}
-                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
-                  >
-                    Close
-                  </button>
-                </div>
-              </Dialog.Panel>
-            </div>
-          </div>
-        </Dialog>
-
-        {/* Approval Modal */}
-        <Dialog 
-          open={showApprovalModal} 
-          onClose={() => setShowApprovalModal(false)}
-          className="relative z-50"
-        >
-          <div className="fixed inset-0 bg-black bg-opacity-25" />
-          <div className="fixed inset-0 overflow-y-auto">
-            <div className="flex min-h-full items-center justify-center p-4">
-              <Dialog.Panel className="w-full max-w-md bg-white rounded-lg shadow-xl">
-                <div className="px-6 py-4">
-                  <div className="flex items-center">
-                    <ExclamationTriangleIcon className="h-12 w-12 text-yellow-500 mr-4" />
-                    <div>
-                      <Dialog.Title className="text-lg font-medium text-gray-900">
-                        Approve School Submission
-                      </Dialog.Title>
-                      <p className="text-sm text-gray-500 mt-1">
-                        This action will approve the school and allocate books.
-                      </p>
-                    </div>
-                  </div>
-                  
-                  {selectedSchool && (
-                    <div className="mt-4 p-4 bg-gray-50 rounded-lg">
-                      <div className="text-sm space-y-1">
-                        <div><strong>School:</strong> {selectedSchool.name}</div>
-                        <div><strong>Students:</strong> {selectedSchool.totalDeclared}</div>
-                        <div><strong>Books needed:</strong> {selectedSchool.totalDeclared * 20}</div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-                
-                <div className="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3">
-                  <button
-                    onClick={() => setShowApprovalModal(false)}
-                    disabled={actionLoading}
-                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors disabled:opacity-50"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={handleApproveSchool}
-                    disabled={actionLoading}
-                    className="px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-md transition-colors disabled:opacity-50 flex items-center"
-                  >
-                    {actionLoading ? (
-                      <>
-                        <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                        Approving...
-                      </>
-                    ) : (
-                      'Approve'
                     )}
-                  </button>
-                </div>
-              </Dialog.Panel>
-            </div>
-          </div>
-        </Dialog>
 
-        {/* Delivery Modal */}
-        <Dialog 
-          open={showDeliveryModal} 
-          onClose={() => setShowDeliveryModal(false)}
-          className="relative z-50"
-        >
-          <div className="fixed inset-0 bg-black bg-opacity-25" />
-          <div className="fixed inset-0 overflow-y-auto">
-            <div className="flex min-h-full items-center justify-center p-4">
-              <Dialog.Panel className="w-full max-w-lg bg-white rounded-lg shadow-xl">
-                <div className="px-6 py-4 border-b border-gray-200">
-                  <Dialog.Title className="text-lg font-medium text-gray-900">
-                    Confirm Delivery
-                  </Dialog.Title>
-                  <p className="text-sm text-gray-500 mt-1">
-                    Upload delivery proof and confirm books have been delivered.
-                  </p>
-                </div>
-                
-                <div className="px-6 py-4 space-y-4">
-                  {selectedSchool && (
-                    <div className="p-4 bg-gray-50 rounded-lg">
-                      <div className="text-sm space-y-1">
-                        <div><strong>School:</strong> {selectedSchool.name}</div>
-                        <div><strong>Books to deliver:</strong> {selectedSchool.totalDeclared * 20}</div>
-                      </div>
+                    <div className="mt-6 flex justify-end space-x-3">
+                      <button
+                        onClick={() => setShowDeliverModal(false)}
+                        className="bg-gray-300 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-400 transition-colors"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={deliverSchoolBooks}
+                        disabled={!deliveryProof || processing}
+                        className="bg-green-500 text-white px-4 py-2 rounded-md hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      >
+                        {processing ? 'Processing...' : 'Confirm Delivery'}
+                      </button>
                     </div>
-                  )}
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Delivery Proof <span className="text-red-500">*</span>
-                    </label>
-                    <FileUpload
-                      onFilesAccepted={setDeliveryProofs}
-                      acceptedFileTypes={{
-                        'image/*': ['.png', '.jpg', '.jpeg'],
-                        'application/pdf': ['.pdf']
-                      }}
-                      maxFiles={3}
-                      multiple={true}
-                      label="Upload delivery proof"
-                      description="Upload photos or documents as proof of delivery"
-                    />
-                  </div>
-                </div>
-                
-                <div className="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3">
-                  <button
-                    onClick={() => {
-                      setShowDeliveryModal(false);
-                      setDeliveryProofs([]);
-                    }}
-                    disabled={actionLoading}
-                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors disabled:opacity-50"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={handleDeliveryConfirmation}
-                    disabled={actionLoading || deliveryProofs.length === 0}
-                    className="px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary-hover rounded-md transition-colors disabled:opacity-50 flex items-center"
-                  >
-                    {actionLoading ? (
-                      <>
-                        <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                        Confirming...
-                      </>
-                    ) : (
-                      <>
-                        <DocumentCheckIcon className="h-4 w-4 mr-1" />
-                        Confirm Delivery
-                      </>
-                    )}
-                  </button>
-                </div>
-              </Dialog.Panel>
+                  </Dialog.Panel>
+                </Transition.Child>
+              </div>
             </div>
-          </div>
-        </Dialog>
+          </Dialog>
+        </Transition>
       </div>
     </div>
   );

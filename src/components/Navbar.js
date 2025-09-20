@@ -1,23 +1,26 @@
 import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { Popover } from '@headlessui/react';
 import { 
   Bars3Icon, 
-  XMarkIcon, 
-  HomeIcon, 
-  DocumentPlusIcon,
-  ClipboardDocumentCheckIcon,
-  UserGroupIcon,
+  XMarkIcon,
+  UserIcon,
+  BookOpenIcon,
   ChartBarIcon,
-  ArrowRightOnRectangleIcon,
-  BookOpenIcon
+  ClipboardDocumentListIcon,
+  HomeIcon
 } from '@heroicons/react/24/outline';
+import { Popover, Transition } from '@headlessui/react';
 
+/**
+ * Navbar component with responsive design and role-based navigation
+ * Uses Headless UI for mobile menu and accessibility
+ */
 const Navbar = () => {
   const { user, logout, hasRole } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Handle logout
   const handleLogout = () => {
@@ -27,174 +30,180 @@ const Navbar = () => {
 
   // Navigation items based on user role
   const getNavigationItems = () => {
-    const items = [
-      { name: 'Dashboard', href: '/dashboard', icon: HomeIcon, roles: ['admin', 'school', 'staff'] }
+    if (!user) return [];
+
+    const baseItems = [
+      { name: 'Dashboard', href: '/dashboard', icon: HomeIcon, roles: ['admin', 'school', 'staff'] },
     ];
 
     if (hasRole('school')) {
-      items.push({ 
-        name: 'Submit List', 
-        href: '/submit', 
-        icon: DocumentPlusIcon, 
-        roles: ['school'] 
+      baseItems.push({
+        name: 'Submit List',
+        href: '/school-submission',
+        icon: ClipboardDocumentListIcon,
+        roles: ['school']
       });
     }
 
     if (hasRole('admin')) {
-      items.push(
-        { 
-          name: 'Approve Schools', 
-          href: '/admin/approve', 
-          icon: ClipboardDocumentCheckIcon, 
-          roles: ['admin'] 
-        },
-        { 
-          name: 'Reports', 
-          href: '/reports', 
-          icon: ChartBarIcon, 
-          roles: ['admin'] 
-        }
-      );
-    }
-
-    if (hasRole('staff') || hasRole('admin')) {
-      items.push({ 
-        name: 'Collection', 
-        href: '/collect', 
-        icon: UserGroupIcon, 
-        roles: ['staff', 'admin'] 
+      baseItems.push({
+        name: 'Admin Approval',
+        href: '/admin-approval',
+        icon: BookOpenIcon,
+        roles: ['admin']
       });
     }
 
-    if (hasRole('admin') || hasRole('staff')) {
-      items.push({ 
-        name: 'Reports', 
-        href: '/reports', 
-        icon: ChartBarIcon, 
-        roles: ['admin', 'staff'] 
+    if (hasRole('staff')) {
+      baseItems.push({
+        name: 'Parent Collection',
+        href: '/parent-collection',
+        icon: UserIcon,
+        roles: ['staff']
       });
     }
 
-    return items.filter(item => 
-      item.roles.includes(user?.role)
-    );
+    baseItems.push({
+      name: 'Reports',
+      href: '/reports',
+      icon: ChartBarIcon,
+      roles: ['admin', 'staff']
+    });
+
+    return baseItems.filter(item => item.roles.includes(user.role));
   };
 
   const navigationItems = getNavigationItems();
 
   // Check if current path is active
-  const isActivePath = (href) => {
+  const isActive = (href) => {
     return location.pathname === href;
   };
 
   return (
-    <nav className="bg-primary shadow-lg fixed w-full top-0 z-50" role="navigation" aria-label="Main navigation">
+    <nav className="bg-primary shadow-lg fixed w-full top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
-          {/* Logo and brand */}
+          {/* Logo and Brand */}
           <div className="flex items-center">
-            <Link to="/dashboard" className="flex items-center space-x-2 text-white hover:text-gray-200 transition-colors">
-              <BookOpenIcon className="h-8 w-8" aria-hidden="true" />
-              <span className="font-bold text-lg">FreeBooks Sekondi</span>
+            <Link to="/dashboard" className="flex items-center space-x-2">
+              <BookOpenIcon className="h-8 w-8 text-white" />
+              <span className="text-white text-xl font-bold">
+                FreeBooks Sekondi
+              </span>
             </Link>
           </div>
 
-          {/* Desktop navigation */}
-          <div className="hidden md:flex items-center space-x-4">
+          {/* Desktop Navigation */}
+          <div className="hidden md:flex items-center space-x-8">
             {navigationItems.map((item) => {
               const Icon = item.icon;
               return (
                 <Link
                   key={item.name}
                   to={item.href}
-                  className={`flex items-center space-x-1 px-3 py-2 rounded-md text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-primary ${
-                    isActivePath(item.href)
-                      ? 'bg-primary-hover text-white'
-                      : 'text-white hover:bg-primary-hover hover:text-white'
+                  className={`flex items-center space-x-1 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                    isActive(item.href)
+                      ? 'bg-blue-700 text-white'
+                      : 'text-blue-100 hover:bg-blue-700 hover:text-white'
                   }`}
-                  aria-current={isActivePath(item.href) ? 'page' : undefined}
+                  aria-current={isActive(item.href) ? 'page' : undefined}
                 >
-                  <Icon className="h-4 w-4" aria-hidden="true" />
+                  <Icon className="h-4 w-4" />
                   <span>{item.name}</span>
                 </Link>
               );
             })}
+          </div>
 
-            {/* User info and logout */}
-            <div className="flex items-center space-x-4 ml-6 pl-6 border-l border-primary-hover">
-              <div className="text-white text-sm">
-                <div className="font-medium">{user?.name}</div>
-                <div className="text-xs text-gray-200 capitalize">{user?.role}</div>
-              </div>
-              <button
-                onClick={handleLogout}
-                className="flex items-center space-x-1 text-white hover:text-gray-200 transition-colors focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-primary rounded-md px-2 py-1"
-                aria-label="Logout"
-              >
-                <ArrowRightOnRectangleIcon className="h-4 w-4" aria-hidden="true" />
-                <span className="text-sm">Logout</span>
-              </button>
+          {/* User Menu */}
+          <div className="hidden md:flex items-center space-x-4">
+            {/* User Info */}
+            <div className="flex items-center space-x-2 text-blue-100">
+              <UserIcon className="h-5 w-5" />
+              <span className="text-sm">
+                {user?.name} ({user?.role})
+              </span>
             </div>
+
+            {/* Logout Button */}
+            <button
+              onClick={handleLogout}
+              className="btn-primary px-4 py-2 text-sm"
+              aria-label="Logout"
+            >
+              Logout
+            </button>
           </div>
 
           {/* Mobile menu button */}
           <div className="md:hidden flex items-center">
-            <Popover className="relative">
-              {({ open }) => (
-                <>
-                  <Popover.Button className="text-white hover:text-gray-200 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-primary rounded-md p-2">
-                    <span className="sr-only">Open main menu</span>
-                    {open ? (
-                      <XMarkIcon className="h-6 w-6" aria-hidden="true" />
-                    ) : (
-                      <Bars3Icon className="h-6 w-6" aria-hidden="true" />
-                    )}
-                  </Popover.Button>
-
-                  <Popover.Panel className="absolute right-0 top-full mt-2 w-64 bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
-                    <div className="py-1">
-                      {/* User info */}
-                      <div className="px-4 py-3 border-b border-gray-200">
-                        <div className="text-sm font-medium text-gray-900">{user?.name}</div>
-                        <div className="text-xs text-gray-500 capitalize">{user?.role}</div>
-                      </div>
-
-                      {/* Navigation items */}
-                      {navigationItems.map((item) => {
-                        const Icon = item.icon;
-                        return (
-                          <Link
-                            key={item.name}
-                            to={item.href}
-                            className={`flex items-center space-x-3 px-4 py-2 text-sm transition-colors ${
-                              isActivePath(item.href)
-                                ? 'bg-primary text-white'
-                                : 'text-gray-700 hover:bg-gray-100'
-                            }`}
-                            aria-current={isActivePath(item.href) ? 'page' : undefined}
-                          >
-                            <Icon className="h-4 w-4" aria-hidden="true" />
-                            <span>{item.name}</span>
-                          </Link>
-                        );
-                      })}
-
-                      {/* Logout */}
-                      <button
-                        onClick={handleLogout}
-                        className="flex items-center space-x-3 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
-                      >
-                        <ArrowRightOnRectangleIcon className="h-4 w-4" aria-hidden="true" />
-                        <span>Logout</span>
-                      </button>
-                    </div>
-                  </Popover.Panel>
-                </>
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="text-blue-100 hover:text-white p-2"
+              aria-label="Toggle mobile menu"
+              aria-expanded={mobileMenuOpen}
+            >
+              {mobileMenuOpen ? (
+                <XMarkIcon className="h-6 w-6" />
+              ) : (
+                <Bars3Icon className="h-6 w-6" />
               )}
-            </Popover>
+            </button>
           </div>
         </div>
       </div>
+
+      {/* Mobile Navigation Menu */}
+      <Transition
+        show={mobileMenuOpen}
+        enter="transition ease-out duration-200"
+        enterFrom="transform opacity-0 scale-95"
+        enterTo="transform opacity-100 scale-100"
+        leave="transition ease-in duration-150"
+        leaveFrom="transform opacity-100 scale-100"
+        leaveTo="transform opacity-0 scale-95"
+      >
+        <div className="md:hidden">
+          <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3 bg-primary-800 shadow-lg">
+            {navigationItems.map((item) => {
+              const Icon = item.icon;
+              return (
+                <Link
+                  key={item.name}
+                  to={item.href}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={`flex items-center space-x-2 px-3 py-2 rounded-md text-base font-medium transition-colors ${
+                    isActive(item.href)
+                      ? 'bg-primary-700 text-white'
+                      : 'text-primary-100 hover:bg-primary-700 hover:text-white'
+                  }`}
+                  aria-current={isActive(item.href) ? 'page' : undefined}
+                >
+                  <Icon className="h-5 w-5" />
+                  <span>{item.name}</span>
+                </Link>
+              );
+            })}
+            
+            {/* Mobile User Info */}
+            <div className="border-t border-primary-700 pt-4 mt-4">
+              <div className="flex items-center space-x-2 px-3 py-2 text-primary-100">
+                <UserIcon className="h-5 w-5" />
+                <span className="text-sm">
+                  {user?.name} ({user?.role})
+                </span>
+              </div>
+              <button
+                onClick={handleLogout}
+                className="w-full text-left px-3 py-2 text-primary-100 hover:bg-primary-700 hover:text-white rounded-md text-base font-medium transition-colors"
+              >
+                Logout
+              </button>
+            </div>
+          </div>
+        </div>
+      </Transition>
     </nav>
   );
 };

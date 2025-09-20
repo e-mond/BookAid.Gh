@@ -1,31 +1,28 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { authService } from '../services/api';
-import { BookOpenIcon, EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
+import { useToastContext } from '../contexts/ToastContext';
+import { BookOpenIcon } from '@heroicons/react/24/outline';
 
+/**
+ * Login component with role-based authentication
+ * Handles form validation and error display
+ */
 const Login = () => {
   const [formData, setFormData] = useState({
     username: '',
     password: '',
-    role: 'admin'
+    role: 'school'
   });
-  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  
-  const { login, isAuthenticated } = useAuth();
+
+  const { login } = useAuth();
+  const { showSuccess, showError } = useToastContext();
   const navigate = useNavigate();
 
-  // Redirect if already authenticated
-  useEffect(() => {
-    if (isAuthenticated()) {
-      navigate('/dashboard');
-    }
-  }, [isAuthenticated, navigate]);
-
-  // Handle input changes
-  const handleInputChange = (e) => {
+  // Handle form input changes
+  const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
@@ -38,193 +35,151 @@ const Login = () => {
   // Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    // Basic validation
-    if (!formData.username || !formData.password) {
-      setError('Please fill in all fields');
-      return;
-    }
-
     setLoading(true);
     setError('');
 
     try {
-      const response = await authService.login(formData);
+      const result = await login(formData.username, formData.password, formData.role);
       
-      // Store user data and token
-      login(response.user, response.token);
-      
-      // Redirect to dashboard
-      navigate('/dashboard');
+      if (result.success) {
+        showSuccess('Login Successful', `Welcome back, ${formData.username}!`);
+        // Redirect based on role
+        navigate('/dashboard');
+      } else {
+        setError('Login failed. Please check your credentials.');
+        showError('Login Failed', 'Please check your credentials and try again.');
+      }
     } catch (err) {
-      setError(err.message || 'Login failed. Please check your credentials.');
+      setError('An error occurred during login. Please try again.');
+      showError('Login Error', 'An unexpected error occurred. Please try again.');
+      console.error('Login error:', err);
     } finally {
       setLoading(false);
     }
   };
 
-  // Toggle password visibility
-  const togglePasswordVisibility = () => {
-    setShowPassword(!showPassword);
-  };
-
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-      <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        {/* Logo and welcome message */}
-        <div className="flex justify-center">
-          <BookOpenIcon className="h-16 w-16 text-primary" aria-hidden="true" />
+    <div className="min-h-screen bg-background flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-md w-full space-y-8" role="main" aria-label="Login form">
+        {/* Header */}
+        <div className="text-center">
+          <div className="flex justify-center">
+            <BookOpenIcon className="h-12 w-12 text-primary" />
+          </div>
+          <h2 className="mt-6 text-3xl font-bold text-gray-900">
+            Welcome to FreeBooks Sekondi
+          </h2>
+          <p className="mt-2 text-lg text-gray-600">
+            Empowering Education!
+          </p>
         </div>
-        <h1 className="mt-6 text-center text-2xl font-bold text-gray-900">
-          Welcome to FreeBooks Sekondi
-        </h1>
-        <p className="mt-2 text-center text-sm text-gray-600">
-          Empowering Education!
-        </p>
-      </div>
 
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-white py-8 px-4 shadow-md sm:rounded-lg sm:px-10">
-          <form className="space-y-6" onSubmit={handleSubmit} noValidate>
-            {/* Username field */}
-            <div>
-              <label htmlFor="username" className="block text-sm font-medium text-gray-700">
-                Username
-              </label>
-              <div className="mt-1">
-                <input
-                  id="username"
-                  name="username"
-                  type="text"
-                  autoComplete="username"
-                  required
-                  value={formData.username}
-                  onChange={handleInputChange}
-                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-primary focus:border-primary focus:ring-2 sm:text-sm"
-                  placeholder="Enter your username"
-                  aria-label="Username input"
-                  aria-describedby={error ? "login-error" : undefined}
-                />
-              </div>
-            </div>
-
-            {/* Password field */}
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                Password
-              </label>
-              <div className="mt-1 relative">
-                <input
-                  id="password"
-                  name="password"
-                  type={showPassword ? 'text' : 'password'}
-                  autoComplete="current-password"
-                  required
-                  value={formData.password}
-                  onChange={handleInputChange}
-                  className="appearance-none block w-full px-3 py-2 pr-10 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-primary focus:border-primary focus:ring-2 sm:text-sm"
-                  placeholder="Enter your password"
-                  aria-label="Password input"
-                  aria-describedby={error ? "login-error" : undefined}
-                />
-                <button
-                  type="button"
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
-                  onClick={togglePasswordVisibility}
-                  aria-label={showPassword ? "Hide password" : "Show password"}
-                >
-                  {showPassword ? (
-                    <EyeSlashIcon className="h-5 w-5 text-gray-400 hover:text-gray-500" />
-                  ) : (
-                    <EyeIcon className="h-5 w-5 text-gray-400 hover:text-gray-500" />
-                  )}
-                </button>
-              </div>
-            </div>
-
-            {/* Role selection */}
-            <div>
-              <label htmlFor="role" className="block text-sm font-medium text-gray-700">
-                Role
-              </label>
-              <div className="mt-1">
-                <select
-                  id="role"
-                  name="role"
-                  value={formData.role}
-                  onChange={handleInputChange}
-                  className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary focus:ring-2 sm:text-sm"
-                  aria-label="Select your role"
-                >
-                  <option value="admin">Administrator</option>
-                  <option value="school">School</option>
-                  <option value="staff">Staff</option>
-                </select>
-              </div>
-            </div>
-
-            {/* Error message */}
+        {/* Login Form */}
+        <form className="mt-8 space-y-6" onSubmit={handleSubmit} aria-label="Login form">
+          <div className="card p-8 space-y-6 animate-fade-in">
+            {/* Error Message */}
             {error && (
-              <div 
-                id="login-error"
-                className="rounded-md bg-error bg-opacity-10 p-4"
-                role="alert"
-                aria-live="polite"
-              >
-                <div className="text-sm text-error">{error}</div>
+              <div className="bg-error-50 border border-error-200 rounded-lg p-4 animate-slide-up">
+                <div className="flex">
+                  <div className="ml-3">
+                    <h3 className="text-sm font-medium text-error-800">
+                      Login Error
+                    </h3>
+                    <div className="mt-2 text-sm text-error-700">
+                      {error}
+                    </div>
+                  </div>
+                </div>
               </div>
             )}
 
-            {/* Submit button */}
+            {/* Username Input */}
+            <div>
+              <label htmlFor="username" className="form-label">
+                Username
+              </label>
+              <input
+                id="username"
+                name="username"
+                type="text"
+                required
+                value={formData.username}
+                onChange={handleChange}
+                className="form-input"
+                placeholder="Enter your username"
+                aria-label="Username input"
+                disabled={loading}
+              />
+            </div>
+
+            {/* Password Input */}
+            <div>
+              <label htmlFor="password" className="form-label">
+                Password
+              </label>
+              <input
+                id="password"
+                name="password"
+                type="password"
+                required
+                value={formData.password}
+                onChange={handleChange}
+                className="form-input"
+                placeholder="Enter your password"
+                aria-label="Password input"
+                disabled={loading}
+              />
+            </div>
+
+            {/* Role Selection */}
+            <div>
+              <label htmlFor="role" className="form-label">
+                Role
+              </label>
+              <select
+                id="role"
+                name="role"
+                value={formData.role}
+                onChange={handleChange}
+                className="form-input"
+                disabled={loading}
+                aria-label="Select your role"
+              >
+                <option value="school">School Administrator</option>
+                <option value="admin">System Administrator</option>
+                <option value="staff">Collection Staff</option>
+              </select>
+            </div>
+
+            {/* Submit Button */}
             <div>
               <button
                 type="submit"
                 disabled={loading}
-                className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-primary hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                aria-describedby={loading ? "login-loading" : undefined}
+                className="btn-primary w-full"
               >
                 {loading ? (
-                  <>
-                    <svg 
-                      className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" 
-                      xmlns="http://www.w3.org/2000/svg" 
-                      fill="none" 
-                      viewBox="0 0 24 24"
-                      aria-hidden="true"
-                    >
-                      <circle 
-                        className="opacity-25" 
-                        cx="12" 
-                        cy="12" 
-                        r="10" 
-                        stroke="currentColor" 
-                        strokeWidth="4"
-                      ></circle>
-                      <path 
-                        className="opacity-75" 
-                        fill="currentColor" 
-                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                      ></path>
-                    </svg>
-                    <span id="login-loading">Signing in...</span>
-                  </>
+                  <div className="flex items-center justify-center">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Logging in...
+                  </div>
                 ) : (
-                  'Sign In'
+                  'Log In'
                 )}
               </button>
             </div>
-          </form>
+          </div>
+        </form>
 
-          {/* Demo credentials help */}
-          <div className="mt-6 border-t border-gray-200 pt-6">
-            <div className="text-sm text-gray-600">
-              <p className="font-medium mb-2">Demo Credentials:</p>
-              <div className="space-y-1 text-xs">
-                <p><strong>Admin:</strong> admin / admin123</p>
-                <p><strong>School:</strong> school1 / school123</p>
-                <p><strong>Staff:</strong> staff1 / staff123</p>
-              </div>
-            </div>
+        {/* Demo Credentials */}
+        <div className="bg-primary-50 border border-primary-200 rounded-lg p-4 animate-fade-in">
+          <h3 className="text-sm font-medium text-primary-800 mb-2">
+            Demo Credentials
+          </h3>
+          <div className="text-xs text-primary-700 space-y-1">
+            <p><strong>School:</strong> school1 / password123</p>
+            <p><strong>Admin:</strong> admin1 / password123</p>
+            <p><strong>Staff:</strong> staff1 / password123</p>
           </div>
         </div>
       </div>
