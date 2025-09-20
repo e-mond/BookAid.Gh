@@ -28,7 +28,6 @@ const Login = () => {
       ...prev,
       [name]: value
     }));
-    // Clear error when user starts typing
     if (error) setError('');
   };
 
@@ -43,7 +42,6 @@ const Login = () => {
       
       if (result.success) {
         showSuccess('Login Successful', `Welcome back, ${formData.username}!`);
-        // Redirect based on role
         navigate('/dashboard');
       } else {
         setError('Login failed. Please check your credentials.');
@@ -82,12 +80,8 @@ const Login = () => {
               <div className="bg-error-50 border border-error-200 rounded-lg p-4 animate-slide-up">
                 <div className="flex">
                   <div className="ml-3">
-                    <h3 className="text-sm font-medium text-error-800">
-                      Login Error
-                    </h3>
-                    <div className="mt-2 text-sm text-error-700">
-                      {error}
-                    </div>
+                    <h3 className="text-sm font-medium text-error-800">Login Error</h3>
+                    <div className="mt-2 text-sm text-error-700">{error}</div>
                   </div>
                 </div>
               </div>
@@ -95,9 +89,7 @@ const Login = () => {
 
             {/* Username Input */}
             <div>
-              <label htmlFor="username" className="form-label">
-                Username
-              </label>
+              <label htmlFor="username" className="form-label">Username</label>
               <input
                 id="username"
                 name="username"
@@ -114,9 +106,7 @@ const Login = () => {
 
             {/* Password Input */}
             <div>
-              <label htmlFor="password" className="form-label">
-                Password
-              </label>
+              <label htmlFor="password" className="form-label">Password</label>
               <input
                 id="password"
                 name="password"
@@ -133,9 +123,7 @@ const Login = () => {
 
             {/* Role Selection */}
             <div>
-              <label htmlFor="role" className="form-label">
-                Role
-              </label>
+              <label htmlFor="role" className="form-label">Role</label>
               <select
                 id="role"
                 name="role"
@@ -173,9 +161,7 @@ const Login = () => {
 
         {/* Demo Credentials */}
         <div className="bg-primary-50 border border-primary-200 rounded-lg p-4 animate-fade-in">
-          <h3 className="text-sm font-medium text-primary-800 mb-2">
-            Demo Credentials
-          </h3>
+          <h3 className="text-sm font-medium text-primary-800 mb-2">Demo Credentials</h3>
           <div className="text-xs text-primary-700 space-y-1">
             <p><strong>School:</strong> school1 / password123</p>
             <p><strong>Admin:</strong> admin1 / password123</p>

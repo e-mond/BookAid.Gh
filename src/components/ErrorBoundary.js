@@ -2,7 +2,8 @@ import React from 'react';
 import { ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 
 /**
- * Error Boundary component to catch and handle React errors gracefully
+ * Error Boundary component to catch and display React errors gracefully
+ * Provides user-friendly error messages and recovery options
  */
 class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -16,16 +17,13 @@ class ErrorBoundary extends React.Component {
   }
 
   componentDidCatch(error, errorInfo) {
-    // Log error details
+    // Log error details for debugging
     console.error('ErrorBoundary caught an error:', error, errorInfo);
-    
     this.setState({
       error: error,
       errorInfo: errorInfo
     });
-
-    // You can also log the error to an error reporting service here
-    // logErrorToService(error, errorInfo);
+    // Optionally: logErrorToService(error, errorInfo);
   }
 
   handleRetry = () => {
@@ -34,58 +32,45 @@ class ErrorBoundary extends React.Component {
 
   render() {
     if (this.state.hasError) {
-      // Custom fallback UI
       return (
-        <div className="min-h-screen bg-background flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
           <div className="max-w-md w-full space-y-8">
             <div className="text-center">
-              <div className="flex justify-center">
-                <ExclamationTriangleIcon className="h-12 w-12 text-error" />
+              <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4">
+                <ExclamationTriangleIcon className="h-6 w-6 text-red-600" />
               </div>
-              <h2 className="mt-6 text-3xl font-bold text-gray-900">
+              <h2 className="text-3xl font-bold text-gray-900 mb-2">
                 Something went wrong
               </h2>
-              <p className="mt-2 text-lg text-gray-600">
-                We're sorry, but something unexpected happened.
+              <p className="text-gray-600 mb-8">
+                We're sorry, but something unexpected happened. Please try again.
               </p>
-            </div>
 
-            <div className="card p-8 space-y-6">
-              <div className="text-center">
-                <p className="text-gray-600 mb-6">
-                  The application encountered an error. Please try refreshing the page or contact support if the problem persists.
-                </p>
-                
-                <div className="space-y-4">
-                  <button
-                    onClick={this.handleRetry}
-                    className="btn-primary w-full"
-                  >
-                    Try Again
-                  </button>
-                  
-                  <button
-                    onClick={() => window.location.reload()}
-                    className="btn-secondary w-full"
-                  >
-                    Refresh Page
-                  </button>
-                </div>
+              <div className="space-y-4">
+                <button
+                  onClick={this.handleRetry}
+                  className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+                >
+                  Try Again
+                </button>
+
+                <button
+                  onClick={() => window.location.reload()}
+                  className="w-full flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+                >
+                  Reload Page
+                </button>
               </div>
 
-              {/* Development error details */}
               {process.env.NODE_ENV === 'development' && this.state.error && (
-                <details className="mt-6">
-                  <summary className="cursor-pointer text-sm font-medium text-gray-700 hover:text-gray-900">
+                <details className="mt-8 text-left">
+                  <summary className="cursor-pointer text-sm text-gray-500 hover:text-gray-700">
                     Error Details (Development)
                   </summary>
-                  <div className="mt-2 p-4 bg-gray-100 rounded-lg">
-                    <pre className="text-xs text-gray-600 overflow-auto">
-                      {this.state.error && this.state.error.toString()}
-                      <br />
-                      {this.state.errorInfo.componentStack}
-                    </pre>
-                  </div>
+                  <pre className="mt-2 text-xs text-red-600 bg-red-50 p-4 rounded-md overflow-auto">
+                    {this.state.error && this.state.error.toString()}
+                    {this.state.errorInfo?.componentStack}
+                  </pre>
                 </details>
               )}
             </div>
@@ -99,22 +84,20 @@ class ErrorBoundary extends React.Component {
 }
 
 /**
- * Hook-based error boundary for functional components
+ * Hook-based error handler for functional components
  */
 export const useErrorHandler = () => {
   const [error, setError] = React.useState(null);
 
   const resetError = () => setError(null);
 
-  const handleError = React.useCallback((error) => {
-    console.error('Error caught by useErrorHandler:', error);
-    setError(error);
+  const handleError = React.useCallback((err) => {
+    console.error('Error caught by useErrorHandler:', err);
+    setError(err);
   }, []);
 
   React.useEffect(() => {
-    if (error) {
-      throw error;
-    }
+    if (error) throw error;
   }, [error]);
 
   return { handleError, resetError };
