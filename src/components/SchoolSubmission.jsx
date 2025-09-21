@@ -485,7 +485,7 @@ const SchoolSubmission = () => {
     const totalStudents = formData.students.length;
 
     return (
-      <div className="space-y-6">
+        <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8 space-y-8">
         <h3 className="text-lg font-medium text-gray-900">Submission Preview</h3>
         
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
@@ -514,7 +514,7 @@ const SchoolSubmission = () => {
   };
 
   return (
-    <div className="space-y-6">
+      <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8 space-y-8">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold text-gray-900">School Submission</h1>
       </div>

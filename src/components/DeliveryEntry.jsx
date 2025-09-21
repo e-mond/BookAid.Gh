@@ -117,7 +117,6 @@ const DeliveryEntry = () => {
 
       const response = await api.createDelivery(deliveryData);
       
-      // Update inventory context
       updateDistribution(parseInt(formData.booksDelivered));
       
       resetForm();
@@ -153,36 +152,36 @@ const DeliveryEntry = () => {
 
   if (loading && schools.length === 0) {
     return (
-      <div className="space-y-6">
-        <h1 className="text-2xl font-bold text-gray-900">Delivery Entry</h1>
+          <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8 space-y-8">
+        <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Delivery Entry</h1>
         <FormSkeleton fields={5} />
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
+        <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8 space-y-8">
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-gray-900">Record Delivery</h1>
+        <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Record Delivery</h1>
       </div>
 
-      <div className="bg-white shadow rounded-lg">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h2 className="text-lg font-medium text-gray-900">Delivery Information</h2>
+      <div className="bg-white shadow-xl rounded-xl overflow-hidden transition-all duration-300 hover:shadow-2xl">
+        <div className="px-6 py-5 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-gray-200">
+          <h2 className="text-xl font-semibold text-gray-900">Delivery Information</h2>
         </div>
         <div className="p-6">
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
-              <label htmlFor="schoolId" className="block text-sm font-medium text-gray-700 mb-1">
-                School <span className="text-error">*</span>
+              <label htmlFor="schoolId" className="block text-sm font-medium text-gray-700 mb-2">
+                School <span className="text-red-500">*</span>
               </label>
               <select
                 id="schoolId"
                 name="schoolId"
                 value={formData.schoolId}
                 onChange={handleSchoolSelect}
-                className={`block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-success focus:border-success transition-colors duration-200 ${
-                  errors.schoolId ? 'border-error' : 'border-gray-300'
+                className={`block w-full px-4 py-3 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all duration-200 ${
+                  errors.schoolId ? 'border-red-500' : 'border-gray-300'
                 }`}
                 aria-invalid={errors.schoolId ? 'true' : 'false'}
                 aria-describedby={errors.schoolId ? 'schoolId-error' : undefined}
@@ -195,7 +194,7 @@ const DeliveryEntry = () => {
                 ))}
               </select>
               {errors.schoolId && (
-                <p id="schoolId-error" className="mt-1 text-sm text-error" role="alert">
+                <p id="schoolId-error" className="mt-2 text-sm text-red-500" role="alert">
                   {errors.schoolId}
                 </p>
               )}
@@ -203,8 +202,8 @@ const DeliveryEntry = () => {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label htmlFor="booksDelivered" className="block text-sm font-medium text-gray-700 mb-1">
-                  Books Delivered <span className="text-error">*</span>
+                <label htmlFor="booksDelivered" className="block text-sm font-medium text-gray-700 mb-2">
+                  Books Delivered <span className="text-red-500">*</span>
                 </label>
                 <input
                   id="booksDelivered"
@@ -212,8 +211,8 @@ const DeliveryEntry = () => {
                   type="number"
                   value={formData.booksDelivered}
                   onChange={handleInputChange}
-                  className={`block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-success focus:border-success transition-colors duration-200 ${
-                    errors.booksDelivered ? 'border-error' : 'border-gray-300'
+                  className={`block w-full px-4 py-3 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all duration-200 ${
+                    errors.booksDelivered ? 'border-red-500' : 'border-gray-300'
                   }`}
                   placeholder="Enter number of books"
                   min="1"
@@ -221,30 +220,30 @@ const DeliveryEntry = () => {
                   aria-describedby={errors.booksDelivered ? 'booksDelivered-error' : undefined}
                 />
                 {errors.booksDelivered && (
-                  <p id="booksDelivered-error" className="mt-1 text-sm text-error" role="alert">
+                  <p id="booksDelivered-error" className="mt-2 text-sm text-red-500" role="alert">
                     {errors.booksDelivered}
                   </p>
                 )}
               </div>
 
               <div>
-                <label htmlFor="deliveryDate" className="block text-sm font-medium text-gray-700 mb-1">
-                  Delivery Date <span className="text-error">*</span>
+                <label htmlFor="deliveryDate" className="block text-sm font-medium text-gray-700 mb-2">
+                  Delivery Date <span className="text-red-500">*</span>
                 </label>
                 <DatePicker
                   selected={formData.deliveryDate}
                   onChange={handleDateChange}
                   dateFormat="dd/MM/yyyy"
                   maxDate={new Date()}
-                  className={`block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-success focus:border-success transition-colors duration-200 ${
-                    errors.deliveryDate ? 'border-error' : 'border-gray-300'
+                  className={`block w-full px-4 py-3 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all duration-200 ${
+                    errors.deliveryDate ? 'border-red-500' : 'border-gray-300'
                   }`}
                   placeholderText="Select delivery date"
                   aria-invalid={errors.deliveryDate ? 'true' : 'false'}
                   aria-describedby={errors.deliveryDate ? 'deliveryDate-error' : undefined}
                 />
                 {errors.deliveryDate && (
-                  <p id="deliveryDate-error" className="mt-1 text-sm text-error" role="alert">
+                  <p id="deliveryDate-error" className="mt-2 text-sm text-red-500" role="alert">
                     {errors.deliveryDate}
                   </p>
                 )}
@@ -252,7 +251,7 @@ const DeliveryEntry = () => {
             </div>
 
             <div>
-              <label htmlFor="notes" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="notes" className="block text-sm font-medium text-gray-700 mb-2">
                 Notes (Optional)
               </label>
               <textarea
@@ -260,18 +259,19 @@ const DeliveryEntry = () => {
                 name="notes"
                 value={formData.notes}
                 onChange={handleInputChange}
-                rows={3}
-                className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-success focus:border-success transition-colors duration-200"
+                rows={4}
+                className="block w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all duration-200 resize-y"
                 placeholder="Enter any additional notes about the delivery"
               />
             </div>
 
-            <div className="flex justify-end space-x-3">
+            <div className="flex justify-end space-x-4">
               <Button
                 type="button"
                 variant="secondary"
                 onClick={resetForm}
                 disabled={loading}
+                className="bg-gray-100 hover:bg-gray-200 text-gray-700"
               >
                 Reset
               </Button>
@@ -280,6 +280,7 @@ const DeliveryEntry = () => {
                 variant="primary"
                 loading={loading}
                 disabled={loading}
+                className="bg-indigo-600 hover:bg-indigo-700"
               >
                 Record Delivery
               </Button>
@@ -288,13 +289,13 @@ const DeliveryEntry = () => {
         </div>
       </div>
 
-      {/* Toast Notification */}
       {showToast && (
         <Toast
           message={toastMessage}
           type={toastType}
           onClose={handleToastClose}
           duration={3000}
+          className="shadow-lg"
         />
       )}
     </div>
