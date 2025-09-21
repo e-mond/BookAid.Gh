@@ -28,7 +28,6 @@ const Signup = () => {
   const { signup, changePassword, isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
-  // Redirect if already authenticated
   useEffect(() => {
     if (isAuthenticated()) {
       navigate('/', { replace: true });
@@ -42,7 +41,6 @@ const Signup = () => {
       [name]: value
     }));
     
-    // Clear error when user starts typing
     if (errors[name]) {
       setErrors(prev => ({
         ...prev,
@@ -58,7 +56,6 @@ const Signup = () => {
       [name]: value
     }));
     
-    // Clear error when user starts typing
     if (passwordErrors[name]) {
       setPasswordErrors(prev => ({
         ...prev,
@@ -160,7 +157,6 @@ const Signup = () => {
       setShowToast(true);
       setShowPasswordModal(false);
       
-      // Redirect to login after successful password change
       setTimeout(() => {
         navigate('/login');
       }, 2000);
@@ -181,72 +177,119 @@ const Signup = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary to-success flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        <div className="bg-white rounded-lg shadow-xl p-6">
-          <div className="text-center mb-6">
-            <h2 className="text-2xl font-bold text-gray-900">School Registration</h2>
-            <p className="text-gray-600 mt-2">Register your school to participate in FreeBooks Sekondi</p>
-          </div>
-
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <Input
-              label="Username"
-              name="username"
-              type="text"
-              value={formData.username}
-              onChange={handleInputChange}
-              error={errors.username}
-              required
-              placeholder="Choose a username"
-              aria-label="Username input"
-            />
-
-            <Input
-              label="Email Address"
-              name="email"
-              type="email"
-              value={formData.email}
-              onChange={handleInputChange}
-              error={errors.email}
-              required
-              placeholder="Enter your email"
-              aria-label="Email input"
-            />
-
-            <Input
-              label="School Name"
-              name="schoolName"
-              type="text"
-              value={formData.schoolName}
-              onChange={handleInputChange}
-              error={errors.schoolName}
-              required
-              placeholder="Enter your school name"
-              aria-label="School name input"
-            />
-
-            <Button
-              type="submit"
-              variant="primary"
-              size="lg"
-              className="w-full"
-              aria-label="Sign up button"
-            >
-              Sign Up
-            </Button>
-          </form>
-
-          <div className="mt-6 text-center">
-            <p className="text-sm text-gray-600">
-              Already have an account?{' '}
-              <button
-                onClick={() => navigate('/login')}
-                className="text-primary hover:text-blue-600 font-medium focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 rounded"
-              >
-                Sign in
-              </button>
+    <div 
+      className="min-h-screen bg-cover bg-center bg-no-repeat flex flex-col md:flex-row"
+      style={{
+        backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.6)), url('https://images.unsplash.com/photo-1523240795612-9a054b0db644?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80')`
+      }}
+    >
+      {/* Aside Section */}
+      <div className="md:w-1/3 bg-indigo-800 bg-opacity-90 text-white p-4 sm:p-6 flex flex-col justify-center">
+        <div className="max-w-md mx-auto space-y-4 sm:space-y-6">
+          <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">Join BookAid Gh.</h1>
+          <p className="text-base sm:text-lg font-medium leading-relaxed">
+            Register your school to access free exercise books and contribute to quality education in Ghana.
+          </p>
+          <div className="space-y-2 text-sm sm:text-base">
+            <p className="flex items-center">
+              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+              </svg>
+              Easy school registration
             </p>
+            <p className="flex items-center">
+              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+              </svg>
+              Submit student lists
+            </p>
+            <p className="flex items-center">
+              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+              </svg>
+              Track book allocations
+            </p>
+            <p className="flex items-center">
+              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+              </svg>
+              Secure account setup
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Signup Form Section */}
+      <div className="flex-1 flex items-center justify-center p-4 sm:p-6">
+        <div className="w-full max-w-md">
+          <div className="bg-white bg-opacity-95 rounded-xl shadow-2xl p-6 sm:p-8 transition-all duration-300 hover:shadow-3xl">
+            <div className="text-center mb-6 sm:mb-8">
+              <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight">School Registration</h2>
+              <p className="text-gray-600 mt-2 text-sm sm:text-base">Join BookAid Gh to manage book distribution</p>
+            </div>
+
+            <form onSubmit={handleSubmit} className="space-y-5 sm:space-y-6">
+              <Input
+                label="Username"
+                name="username"
+                type="text"
+                value={formData.username}
+                onChange={handleInputChange}
+                error={errors.username}
+                required
+                placeholder="Choose a username"
+                aria-label="Username input"
+                className="w-full px-4 py-3 rounded-lg border-gray-300 focus:ring-2 focus:ring-indigo-500 transition-all duration-200 text-sm sm:text-base"
+              />
+
+              <Input
+                label="Email Address"
+                name="email"
+                type="email"
+                value={formData.email}
+                onChange={handleInputChange}
+                error={errors.email}
+                required
+                placeholder="Enter your email"
+                aria-label="Email input"
+                className="w-full px-4 py-3 rounded-lg border-gray-300 focus:ring-2 focus:ring-indigo-500 transition-all duration-200 text-sm sm:text-base"
+              />
+
+              <Input
+                label="School Name"
+                name="schoolName"
+                type="text"
+                value={formData.schoolName}
+                onChange={handleInputChange}
+                error={errors.schoolName}
+                required
+                placeholder="Enter your school name"
+                aria-label="School name input"
+                className="w-full px-4 py-3 rounded-lg border-gray-300 focus:ring-2 focus:ring-indigo-500 transition-all duration-200 text-sm sm:text-base"
+              />
+
+              <Button
+                type="submit"
+                variant="primary"
+                size="lg"
+                className="w-full bg-indigo-600 hover:bg-indigo-700 transition-all duration-200 text-sm sm:text-base"
+                aria-label="Sign up button"
+              >
+                Sign Up
+              </Button>
+            </form>
+
+            <div className="mt-6 text-center">
+              <p className="text-sm text-gray-600">
+                Already have an account?{' '}
+                <button
+                  onClick={() => navigate('/login')}
+                  className="text-indigo-600 hover:text-indigo-800 font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 rounded transition-colors duration-200"
+                >
+                  Sign in
+                </button>
+              </p>
+            </div>
           </div>
         </div>
       </div>
@@ -254,23 +297,24 @@ const Signup = () => {
       {/* Password Change Modal */}
       <Modal
         isOpen={showPasswordModal}
-        onClose={() => {}} // Prevent closing without password change
+        onClose={() => {}} // Prevent closing without action
         title="Change Default Password"
         size="md"
         showCloseButton={false}
         closeOnOverlayClick={false}
+        className="rounded-xl shadow-2xl"
       >
-        <div className="space-y-4">
-          <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-            <p className="text-sm text-blue-800">
+        <div className="space-y-6 p-6">
+          <div className="p-4 bg-indigo-50 border border-indigo-200 rounded-lg">
+            <p className="text-sm text-indigo-800 font-medium">
               <strong>Your default password is:</strong> {defaultPassword}
             </p>
-            <p className="text-sm text-blue-600 mt-1">
-              Please change this password for security reasons.
+            <p className="text-sm text-indigo-600 mt-1">
+              Please change this password for enhanced security.
             </p>
           </div>
 
-          <form onSubmit={handlePasswordSubmit} className="space-y-4">
+          <form onSubmit={handlePasswordSubmit} className="space-y-5 sm:space-y-6">
             <Input
               label="Current Password (Default)"
               name="oldPassword"
@@ -280,6 +324,7 @@ const Signup = () => {
               error={passwordErrors.oldPassword}
               required
               placeholder="Enter default password"
+              className="w-full px-4 py-3 rounded-lg border-gray-300 focus:ring-2 focus:ring-indigo-500 transition-all duration-200 text-sm sm:text-base"
             />
 
             <Input
@@ -291,6 +336,7 @@ const Signup = () => {
               error={passwordErrors.newPassword}
               required
               placeholder="Enter new password"
+              className="w-full px-4 py-3 rounded-lg border-gray-300 focus:ring-2 focus:ring-indigo-500 transition-all duration-200 text-sm sm:text-base"
             />
 
             <Input
@@ -302,21 +348,22 @@ const Signup = () => {
               error={passwordErrors.confirmPassword}
               required
               placeholder="Confirm new password"
+              className="w-full px-4 py-3 rounded-lg border-gray-300 focus:ring-2 focus:ring-indigo-500 transition-all duration-200 text-sm sm:text-base"
             />
 
-            <div className="flex space-x-3">
+            <div className="flex space-x-4">
               <Button
                 type="button"
                 variant="secondary"
                 onClick={handleSkipPasswordChange}
-                className="flex-1"
+                className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 transition-all duration-200 text-sm sm:text-base"
               >
                 Skip for Now
               </Button>
               <Button
                 type="submit"
                 variant="primary"
-                className="flex-1"
+                className="flex-1 bg-indigo-600 hover:bg-indigo-700 transition-all duration-200 text-sm sm:text-base"
               >
                 Change Password
               </Button>
@@ -325,13 +372,13 @@ const Signup = () => {
         </div>
       </Modal>
 
-      {/* Toast Notification */}
       {showToast && (
         <Toast
           message={toastMessage}
           type={toastType}
           onClose={handleToastClose}
           duration={3000}
+          className="shadow-lg"
         />
       )}
     </div>

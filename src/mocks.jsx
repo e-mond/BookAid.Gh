@@ -1,4 +1,9 @@
 // Mock data for FreeBooks Sekondi application
+
+/**
+ * List of schools with their details
+ * @type {Array<Object>}
+ */
 export const schools = [
   {
     id: '1',
@@ -60,6 +65,10 @@ export const schools = [
   }
 ];
 
+/**
+ * List of students with their details
+ * @type {Array<Object>}
+ */
 export const students = [
   {
     id: '1',
@@ -88,6 +97,10 @@ export const students = [
   }
 ];
 
+/**
+ * Inventory data for book distribution
+ * @type {Object}
+ */
 export const inventory = {
   totalBooks: 300000,
   distributed: 1000,
@@ -99,6 +112,10 @@ export const inventory = {
   ]
 };
 
+/**
+ * Reports for book distribution
+ * @type {Array<Object>}
+ */
 export const reports = [
   {
     id: 'ir1',
@@ -126,17 +143,24 @@ export const reports = [
   }
 ];
 
+/**
+ * List of users with credentials for authentication
+ * @type {Array<Object>}
+ */
 export const users = [
   {
     id: '1',
     username: 'admin1',
     email: 'admin@example.com',
-    role: 'admin'
+    password: 'password',
+    role: 'admin',
+    token: 'mock-token-admin'
   },
   {
     id: '2',
     username: 'school1',
     email: 'school@example.com',
+    password: 'password',
     role: 'school',
     schoolId: '1'
   },
@@ -144,17 +168,23 @@ export const users = [
     id: '3',
     username: 'staff1',
     email: 'staff@example.com',
+    password: 'password',
     role: 'staff'
   },
   {
     id: '4',
     username: 'school2',
     email: 'school2@example.com',
+    password: 'password',
     role: 'school',
     schoolId: '2'
   }
 ];
 
+/**
+ * System logs for auditing actions
+ * @type {Array<Object>}
+ */
 export const logs = [
   {
     id: 'log1',
@@ -169,7 +199,7 @@ export const logs = [
     role: 'school',
     action: 'Submitted list',
     details: 'Sekondi Primary submitted 100 students',
-    timestamp: '2025-09-18T09:00:00Z',
+    timetable: '2025-09-18T09:00:00Z',
     userId: '2'
   },
   {
@@ -198,6 +228,10 @@ export const logs = [
   }
 ];
 
+/**
+ * Delivery records for book distribution
+ * @type {Array<Object>}
+ */
 export const deliveries = [
   {
     id: 'del1',
@@ -217,14 +251,23 @@ export const deliveries = [
   }
 ];
 
-// Helper function to simulate API delay
+/**
+ * Simulates an API delay for mock responses
+ * @param {number} [ms=2000] - Delay in milliseconds
+ * @returns {Promise<void>}
+ */
 export const delay = (ms = 2000) => new Promise(resolve => setTimeout(resolve, ms));
 
-// Helper function to get user by credentials
-export const getUserByCredentials = (username, password, role) => {
+/**
+ * Retrieves a user by their credentials
+ * @param {string} username - User's username
+ * @param {string} password - User's password
+ * @returns {Object|null} User object with token or null if not found
+ */
+export const getUserByCredentials = (username, password) => {
   const user = users.find(u => 
     u.username === username && 
-    u.role === role
+    u.password === password
   );
   
   if (user) {
@@ -236,7 +279,11 @@ export const getUserByCredentials = (username, password, role) => {
   return null;
 };
 
-// Helper function to filter logs by role
+/**
+ * Filters logs by user role
+ * @param {string} role - User role (admin, staff, school)
+ * @returns {Array<Object>} Filtered logs
+ */
 export const getLogsByRole = (role) => {
   if (role === 'admin') {
     return logs; // Admin sees all logs
@@ -254,12 +301,24 @@ export const getLogsByRole = (role) => {
   return [];
 };
 
-// Helper function to generate default password
+/**
+ * Generates a default password for new users
+ * @returns {string} Default password
+ */
 export const generateDefaultPassword = () => {
   return 'FreeBooks2025!';
 };
 
-// Helper function to validate school submission
+/**
+ * Validates school submission data
+ * @param {Object} submission - School submission data
+ * @param {string} submission.schoolName - School name
+ * @param {Array<Object>} submission.classes - List of classes
+ * @param {string} [submission.notes] - Optional notes
+ * @returns {Object} Validation result
+ * @returns {boolean} result.isValid - Whether submission is valid
+ * @returns {Array<string>} result.errors - List of validation errors
+ */
 export const validateSchoolSubmission = (submission) => {
   const errors = [];
   
