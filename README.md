@@ -1,85 +1,78 @@
-# FreeBooks Sekondi
+BookAid Gh.
 
-A React frontend application for tracking the yearly distribution of 300,000 free exercise books in Sekondi. The application provides role-based access for system administrators, staff, and school administrators to manage book distribution, school submissions, and parental collections.
+A React frontend application for tracking the yearly distribution of 300,000 free exercise books, trunks, chop boxes, pencils, and pens in Ghana. The application provides role-based access for system administrators, staff, and school administrators to manage distribution, school submissions, and parental collections.
+Features
+System Administrator (Role: 'admin')
 
-## Features
+User Management: Create, suspend, deactivate, or remove users with different roles.
+Distribution Records: Manage yearly records for books, pencils, pens (trunks and chop boxes displayed but inactive).
+School Approvals: Review, approve, or reject school submissions.
+Comprehensive Reports: View all distribution activities and generate reports.
+Dashboard: Overview of total distributions, items, and system metrics.
 
-### System Administrator (Role: 'admin')
-- **User Management**: Create and remove users with different roles
-- **Book Records**: Add and manage yearly book records with budget tracking
-- **School Approvals**: Review and approve school submissions
-- **Comprehensive Reports**: View all distribution activities and generate reports
-- **Dashboard**: Overview of total distributions, books, and system metrics
+Staff (Role: 'staff')
 
-### Staff (Role: 'staff')
-- **Delivery Entry**: Record school deliveries with timestamps and quantities
-- **Parent Collection**: Process parental book collections with QR code receipts
-- **Activity Tracking**: View delivery and collection activities
-- **Reports**: Access distribution reports and statistics
+Delivery Entry: Record school deliveries (books, pencils, pens) with timestamps and quantities (trunks and chop boxes displayed but inactive).
+Parent Collection: Process parental collections with student detail search, cross-checking allocation/collection status, and proof upload (image, receipt, or report card).
+Activity Tracking: View delivery and collection activities.
+Reports: Access distribution reports and statistics.
 
-### School Administrators (Role: 'school')
-- **School Registration**: Sign up schools with automatic password generation
-- **School Submission**: Submit student lists with optional notes (max 500 characters)
-- **Submission History**: View submission status and history
-- **Dashboard**: Monitor own school statistics and submissions
+School Administrators (Role: 'school')
 
-## Technology Stack
+School Registration: Sign up schools with automatic password generation; new users appear in admin user management.
+School Submission: Submit student lists with optional pencil/pen requests (2 per student, adjustable by level: lower primary, upper primary, JHS).
+Submission History: View submission status and history.
+Dashboard: Monitor school statistics and submissions.
 
-- **React 18** with JavaScript
-- **React Router v6** for navigation
-- **Tailwind CSS** for styling
-- **Context API** for state management
-- **Axios** for API calls
-- **Chart.js** for data visualization
-- **jsPDF** with autoTable for PDF generation
-- **React Dropzone** for file uploads
-- **React DatePicker** for date selection
-- **QRCode React** for receipt generation
-- **Fuse.js** for search functionality
-- **React Loading Skeleton** for loading states
+Technology Stack
 
-## Installation
+React 18 with JavaScript
+React Router v6 for navigation
+Tailwind CSS for styling
+Context API for state management
+Axios for API calls
+Chart.js for data visualization
+jsPDF with autoTable for PDF generation
+React Dropzone for file uploads
+React DatePicker for date selection
+QRCode React for receipt generation
+Fuse.js for search functionality
+React Loading Skeleton for loading states
 
-1. **Clone the repository**
-   ```bash
-   git clone <repository-url>
-   cd freebooks-sekondi
-   ```
+Installation
 
-2. **Install dependencies**
-   ```bash
-   npm install
-   ```
+Clone the repository
+git clone <repository-url>
+cd bookaid-gh
 
-3. **Start the development server**
-   ```bash
-   npm start
-   ```
 
-4. **Open your browser**
-   Navigate to `http://localhost:3000`
+Install dependencies
+npm install
 
-## Configuration
 
-### Mock Data vs Real API
+Start the development server
+npm start
 
+
+Open your browserNavigate to http://localhost:3000
+
+
+Configuration
+Mock Data vs Real API
 The application uses mock data by default. To switch to a real API:
 
-1. Open `src/services/api.jsx`
-2. Change `useMocks = false` to use real API endpoints
-3. Update the `API_BASE_URL` to point to your backend
+Open src/services/api.jsx
+Change useMocks = false to use real API endpoints
+Update the API_BASE_URL to point to your backend
 
-### Demo Credentials
-
+Demo Credentials
 Use these credentials to test different user roles:
 
-- **Admin**: `admin1` / `password`
-- **Staff**: `staff1` / `password`
-- **School**: `school1` / `password`
+Admin: admin1 / password
+Staff: staff1 / password
+School: school1 / password
 
-## Project Structure
-
-```
+Project Structure
 src/
 ├── components/
 │   ├── common/           # Reusable UI components
@@ -94,7 +87,7 @@ src/
 │   ├── Signup.jsx
 │   ├── Dashboard.jsx
 │   ├── UserManagement.jsx
-│   ├── BookRecords.jsx
+│   ├── DistributionRecords.jsx
 │   ├── SchoolSubmission.jsx
 │   ├── AdminApproval.jsx
 │   ├── DeliveryEntry.jsx
@@ -115,120 +108,120 @@ src/
 ├── tests/               # Test files
 ├── App.jsx
 └── index.jsx
-```
 
-## Key Features
+Key Features
+Role-Based Access Control
 
-### Role-Based Access Control
-- Different dashboards and features based on user role
-- Protected routes with automatic redirection
-- Role-specific navigation menus
+Different dashboards and features based on user role
+Protected routes with automatic redirection
+Role-specific navigation menus
 
-### Responsive Design
-- Mobile-first approach with Tailwind CSS
-- Responsive breakpoints (`md:`, `lg:`)
-- Touch-friendly interface
+Responsive Design
 
-### Accessibility
-- ARIA attributes for screen readers
-- Keyboard navigation support
-- Focus management and focus traps
-- Semantic HTML structure
+Mobile-first approach with Tailwind CSS
+Responsive breakpoints (sm:, md:, lg:)
+Touch-friendly interface with large touch targets
 
-### Data Management
-- CSV file upload and parsing
-- PDF export with autoTable
-- Real-time search with Fuse.js
-- Form validation with error handling
+Accessibility
 
-### Loading States
-- Skeleton loaders for better UX
-- 2-second delay simulation for demo purposes
-- Loading spinners for async operations
+ARIA attributes for screen readers
+Keyboard navigation support
+Focus management and focus traps
+Semantic HTML structure
 
-## API Endpoints
+Data Management
 
+CSV file upload and parsing for student lists
+Image/receipt/report card upload for parent collection
+PDF export with autoTable
+Real-time student search with Fuse.js
+Form validation with error handling
+
+Loading States
+
+Skeleton loaders for better UX
+2-second delay simulation for demo purposes
+Loading spinners for async operations
+
+API Endpoints
 The application expects the following API endpoints:
+Authentication
 
-### Authentication
-- `POST /api/auth/login` - User login
-- `POST /api/auth/signup` - School registration
-- `POST /api/auth/change-password` - Password change
+POST /api/auth/login - User login
+POST /api/auth/signup - School registration
+POST /api/auth/change-password - Password change
 
-### Inventory
-- `GET /api/inventory` - Get inventory data
-- `POST /api/inventory/add-yearly` - Add yearly book records
+Users
 
-### Schools
-- `GET /api/schools` - Get schools list
-- `POST /api/schools/submit` - Submit school data
-- `POST /api/schools/:id/approve` - Approve school
-- `POST /api/schools/:id/deliver` - Mark as delivered
+GET /api/users - Get users list
+POST /api/users/create - Create user
+DELETE /api/users/remove/:id - Remove user
+PATCH /api/users/:id/suspend - Suspend/deactivate user
 
-### Students
-- `POST /api/students/search` - Search student
-- `POST /api/students/:id/collect` - Collect books
+Inventory
 
-### Deliveries
-- `POST /api/deliveries/create` - Create delivery record
+GET /api/inventory - Get inventory data (books, pencils, pens)
+POST /api/inventory/add-yearly - Add yearly distribution records
 
-### Reports
-- `GET /api/reports` - Get distribution reports
+Schools
 
-### Users
-- `GET /api/users` - Get users list
-- `POST /api/users/create` - Create user
-- `DELETE /api/users/remove/:id` - Remove user
+GET /api/schools - Get schools list
+POST /api/schools/submit - Submit school data (including pencil/pen requests)
+POST /api/schools/:id/approve - Approve school
+POST /api/schools/:id/reject - Reject school
+POST /api/schools/:id/deliver - Mark as delivered
 
-### Logs
-- `GET /api/logs` - Get activity logs
+Students
 
-## Testing
+POST /api/students/search - Search student
+POST /api/students/:id/collect - Collect items (books, pencils, pens)
+POST /api/students/:id/upload-proof - Upload school proof
 
+Deliveries
+
+POST /api/deliveries/create - Create delivery record (books, pencils, pens)
+
+Reports
+
+GET /api/reports - Get distribution reports
+
+Logs
+
+GET /api/logs - Get activity logs
+
+Testing
 Run the test suite:
-
-```bash
 npm test
-```
 
 The application includes comprehensive tests for:
-- Login and authentication
-- School submission forms
-- Parent collection process
-- Dashboard functionality
-- User management
 
-## Building for Production
+Login and authentication
+School submission forms (including pencil/pen requests)
+Parent collection process (with proof upload)
+Dashboard functionality
+User management (create, suspend, remove)
 
-```bash
+Building for Production
 npm run build
-```
 
-This creates an optimized production build in the `build` folder.
+This creates an optimized production build in the build folder.
+Browser Support
 
-## Browser Support
+Chrome (latest)
+Firefox (latest)
+Safari (latest)
+Edge (latest)
 
-- Chrome (latest)
-- Firefox (latest)
-- Safari (latest)
-- Edge (latest)
+Contributing
 
-## Contributing
+Fork the repository
+Create a feature branch (feat/<description>)
+Make your changes and add tests
+Submit a pull request
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests for new functionality
-5. Submit a pull request
-
-## License
-
+License
 This project is licensed under the MIT License.
+Support
+For support, contact the development team or create an issue in the repository.
 
-## Support
-
-For support and questions, please contact the development team or create an issue in the repository.
-
----
-
-**FreeBooks Sekondi** - Ensuring transparency and accessibility in book distribution for all schools and students in Sekondi.
+BookAid Gh. - Ensuring transparency and accessibility in the distribution of books, trunks, chop boxes, pencils, and pens for schools and students in Ghana.
