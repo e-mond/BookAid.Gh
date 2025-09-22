@@ -43,8 +43,8 @@ A React frontend application for tracking the yearly distribution of 300,000 fre
 
 ## Installation
 ```bash
-git clone <https://github.com/e-mond/BookAid.Gh
-cd bookaid-gh
+git clone <https://github.com/e-mond/BookAid.Gh>
+cd BookAid.Gh
 npm install
 npm start
 ```
