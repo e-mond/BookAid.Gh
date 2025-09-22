@@ -196,6 +196,17 @@ npm run build
 
 ---
 
+## Acknowledgements  
+
+This project was also a way to test and improve my vibe coding skills.  
+I used **Cursor AI** as a coding assistant for suggestions and boilerplate,  
+but all code was **reviewed, edited, and adapted by me** to fit the project needs.  
+
+Special thanks to the open-source community and libraries (React, Tailwind, Chart.js, etc.)  
+that made this project possible.  
+
+---
+
 ## License
 This project is licensed under the MIT License.
 
